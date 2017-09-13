@@ -3,3 +3,4 @@
 *.wav
 *.mp3
 *.swp
+Cargo.lock
