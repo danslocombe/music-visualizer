@@ -2,6 +2,9 @@ extern crate hound;
 
 use std::env;
 use std::collections::LinkedList;
+use std::time::{Duration, Instant, SystemTime};
+use std::thread;
+use std::thread::sleep;
 
 use hound::Sample;
 
@@ -15,40 +18,96 @@ fn main() {
     let channels = spec.channels;
     let sample_rate = spec.sample_rate;
 
-    // For now we window over a quater of a second (Completely arbitrary)
+    // For now we window over a half a second (Completely arbitrary)
     // This is a quater of a second forwards and backwards in time
-    let window_size = sample_rate / 4;
+    let sample_time = 0.25;
+    let window_size = sample_rate as f64 * sample_time;
     let mut window = TimeWindow::new(window_size as usize);
+
+    // Countdown allowing you to press play
+    // Program has headstart of a quater of a second
+    let headstart = Duration::from_millis((1000.0 * sample_time) as u64);
+    thread::spawn(move || {
+        sleep(headstart);
+        for i in 0..3 {
+            let ii = 3 - i;
+            println!("{}", ii); 
+            sleep(Duration::new(1, 0));
+        }
+        println!("Play!"); 
+    });
+
+    // Doesn't sleep for headstart duration, but sleeps for countdown
+    sleep(Duration::new(3, 0));
+
+    let start_time = SystemTime::now() + headstart;
 
     // Whether we are currently above the significant threshold and triggering
     let mut triggered = false;
 
     for (i, sample) in reader.samples::<i32>().enumerate() {
 
-        // Skip over all channels but the first
+        // Skip over all wav channels but the first
         if i % channels as usize != 0 {
             continue;
         }
 
         match sample {
-            Ok(x) => {
-                // Add the new sample to the window
-                window.step_forwards(x);
-
-                // Check if new sample significant
-                let sig = window.current_significant();
-
-                if sig != triggered {
-                    triggered = sig;
-
-                    if triggered {
-                        let current_time = window.current_sample as f64 / sample_rate as f64;
-                        println!("TRIGGERING AT TIME {}", current_time);
-                    }
-                }
-            }
+            // Not absing the signal works better odly
+            Ok(x) => parse_sample(x, &start_time, sample_rate, &mut window, &mut triggered),
             Err(e) => println!("ERROR {:?}", e),
         };
+    }
+}
+
+// Ugly function
+fn parse_sample(
+    x : i32,
+    start_time : &SystemTime,
+    sample_rate : u32,
+    window : &mut TimeWindow<i32>,
+    triggered : &mut bool) {
+
+    // Add the new sample to the window
+    window.step_forwards(x);
+
+    // Check if the new sample is significant
+    let sig = window.current_significant();
+
+    // If we are switiching to a new state
+    if sig != *triggered {
+        *triggered = sig;
+
+        //if *triggered {
+
+            // Calculate the difference between the time in the song the triggering
+            // happened and the current time in the song's playback
+            let trigger_time = window.current_sample as f64 / sample_rate as f64;
+            let trigger_time_dur = Duration::from_millis((trigger_time * 1000.0) as u64);
+
+            match start_time.elapsed()
+                            .ok()
+                            .and_then(|current_songtime| {
+                trigger_time_dur.checked_sub(current_songtime)
+            }) {
+                Some(time_diff) => {
+
+                    // Sleep until the point in the song where we were triggered
+                    sleep(time_diff);
+                    println!("Trigger time - {} - avg {}, dev {}", trigger_time, window.avg(), window.std_dev());
+                },
+                None => {
+                    // Errors can occur at several points
+                    // SystemTime can get out of sync randomly
+                    // We can get behind the song
+                    // We can be triggered before the song starts
+                    //
+                    // I think there are some problems in the first 3 + backfill
+                    // seconds as well
+                }
+            }
+
+        //}
     }
 }
 
