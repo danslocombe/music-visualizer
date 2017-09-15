@@ -1,8 +1,6 @@
 use std::time::Duration;
 
 pub enum UpdateType {
-    SongStart,
-    SongEnd,
     Intensity(f64),
 }
 

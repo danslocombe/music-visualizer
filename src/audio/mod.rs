@@ -92,19 +92,26 @@ fn parse_sample(
 
         // Send update to the graphics
         let i = x as f64 / (U16MAX as f64);
-        let intensity = (Intensity(i));
-        match tx.send( VisualizerUpdate {
+        let intensity = Intensity(i);
+        let update = VisualizerUpdate {
             time : trigger_time_dur,
-            update : intensity
-        }) {
-            Ok(_) => { /* Sent ok */ }
+            update : intensity};
+        try_send_update(&tx, update);
 
-            Err(e) => {
-                // Other end of channel closed, so the visualizer must have
-                // been closed / crashed, we treat this optimistically
-                println!("Visualizer window closed, exiting..");
-                ::std::process::exit(0);
-            }
+    }
+}
+
+
+fn try_send_update(tx : &Sender<VisualizerUpdate>, update : VisualizerUpdate) {
+
+    match tx.send(update) {
+        Ok(_) => { /* Sent ok */ }
+
+        Err(_) => {
+            // Other end of channel closed, so the visualizer must have
+            // been closed / crashed, we treat this optimistically
+            println!("Visualizer window closed, exiting..");
+            ::std::process::exit(0);
         }
     }
 }

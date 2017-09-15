@@ -21,7 +21,7 @@ fn main() {
     // Load wav from first arg
     let arg = match env::args().nth(1) {
         Some(x) => x,
-        None => {println!("Usage: simon.exe music.wav"); return;},
+        None => {println!("Usage: simon.exe music.wav\nOr: cargo run -- music.wav"); return;},
     };
 
     let reader = WavReader::open(&arg).unwrap();
