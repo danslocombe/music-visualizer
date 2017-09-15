@@ -61,6 +61,7 @@ fn parse_sample(
 
     // If we are switiching to a new state
     if sig != *triggered {
+    
         *triggered = sig;
 
         // Calculate the difference between the time in the song the triggering

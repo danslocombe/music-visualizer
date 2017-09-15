@@ -12,7 +12,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 
 use audio::run_audio;
 use common::VisualizerUpdate;
-use graphics::run;
+use graphics::run as run_visualizer;
 use hound::WavReader;
 
 
@@ -21,7 +21,7 @@ fn main() {
     // Load wav from first arg
     let arg = match env::args().nth(1) {
         Some(x) => x,
-        None => {println!("Usage: simon music.wav"); return;},
+        None => {println!("Usage: simon.exe music.wav"); return;},
     };
 
     let reader = WavReader::open(&arg).unwrap();
@@ -29,7 +29,6 @@ fn main() {
 
     // Create a transmitter and receiver for updates
     let (tx, rx) : (Sender<VisualizerUpdate>, Receiver<VisualizerUpdate>)= channel();
-
 
     // Countdown allowing you to press play
     let countdown_dur = Duration::new(7, 0);
@@ -40,7 +39,7 @@ fn main() {
 
     // Start the graphics
     thread::spawn(move || {
-        run(music_start_time, rx);
+        run_visualizer(music_start_time, rx);
     });
 
     thread::spawn(move || {
