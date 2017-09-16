@@ -3,6 +3,7 @@ extern crate hound;
 mod audio;
 mod common;
 mod graphics;
+mod module_map;
 
 use std::env;
 use std::time::{Duration, SystemTime};

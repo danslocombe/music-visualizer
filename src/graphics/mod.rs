@@ -28,7 +28,7 @@ fn color_from_val(x : f64) -> Color {
 
 trait Visualization {
     fn update(&mut self, args: &UpdateArgs, update_buffer : Vec<VisualizerUpdate>);
-    fn render(&mut self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs);
+    fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs);
 }
 
 struct CircleVisuals {
@@ -54,7 +54,7 @@ impl CircleVisuals {
 
 impl Visualization for CircleVisuals {
 
-    fn render(&mut self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
+    fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
         use graphics::*;
         use graphics::graphics::clear;
 
@@ -177,7 +177,7 @@ fn line_points (gl : &mut GlGraphics,
 
 pub fn run(start_time : SystemTime, rx : Receiver<VisualizerUpdate>) {
     // Try a different version if this doesn't work
-    let opengl = OpenGL::V4_3;
+    let opengl = OpenGL::V3_3;
 
     let mut window : Window = WindowSettings::new("Simon", [800, 600])
         .opengl(opengl)
@@ -190,8 +190,14 @@ pub fn run(start_time : SystemTime, rx : Receiver<VisualizerUpdate>) {
 
     let mut gl_graphics = GlGraphics::from_colored_textured(c, t);
 
-    let mut visuals = CircleVisuals::new(start_time);
+    //let mut visuals = CircleVisuals::new(start_time);
+    let mut visuals: Vec<Box<Visualization>> = Vec::new();
     let mut prev_time = SystemTime::now();
+
+    // visuals- later on, this will init in the interpreter
+    let mut c_vis = CircleVisuals::new(start_time);
+    visuals.push(Box::new(c_vis));
+
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {
@@ -203,14 +209,17 @@ pub fn run(start_time : SystemTime, rx : Receiver<VisualizerUpdate>) {
                 prev_time = SystemTime::now();
                 let fps = 1000_000_000.0 / (dt.subsec_nanos() as f64);
 
-                visuals.render(fps, &mut gl_graphics, &r);
+                for v in visuals.iter() {
+                    v.render(fps, &mut gl_graphics, &r);
+                }
+                //visuals[0].render(fps, &mut gl_graphics, &r);
             }
             Input::Update(u) => {
 
                 // Get all the pending updates from the receiver and buffer into list
                 let update_buffer = rx.try_iter().collect::<Vec<VisualizerUpdate>>();
 
-                visuals.update(&u, update_buffer);
+                visuals[0].update(&u, update_buffer);
             }
             Input::Press(i) => {
                 // Ignore for now
