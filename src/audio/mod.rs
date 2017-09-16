@@ -38,7 +38,7 @@ pub fn run_audio<T : Read>(
 
         match sample {
             // Not absing the signal works better odly
-            Ok(x) => parse_sample(x, &tx, &start_time, sample_rate, &mut window, &mut triggered),
+            Ok(x) => parse_sample(x, i, &tx, &start_time, sample_rate, &mut window, &mut triggered),
             Err(e) => println!("ERROR {:?}", e),
         };
     }
@@ -47,11 +47,38 @@ pub fn run_audio<T : Read>(
 // Ugly function
 fn parse_sample(
     x : i32,
+    i : usize,
     tx : &Sender<VisualizerUpdate>,
     start_time : &SystemTime,
     sample_rate : u32,
     window : &mut TimeWindow<i32>,
     triggered : &mut bool) {
+
+    // Arbitrary again
+    // 101 prime close to 100
+    if (i % 101 == 0) {
+        let trigger_time = window.current_sample as f64 / sample_rate as f64;
+        let trigger_time_dur = Duration::from_millis((trigger_time * 1000.0) as u64);
+        match start_time.elapsed()
+                        .ok()
+                        .and_then(|current_songtime| {
+            trigger_time_dur.checked_sub(current_songtime)
+        }) {
+            Some(time_diff) => {
+
+                // Sleep until the point in the song where we were triggered
+                sleep(time_diff);
+                let i = 5.0 * window.std_dev() / (U16MAX as f64);
+                let level = Level(i);
+                let update = VisualizerUpdate {
+                    time : trigger_time_dur,
+                    update : level};
+                try_send_update(&tx, update);
+            },
+            None => {
+            }
+        }
+    }
 
     // Add the new sample to the window
     window.step_forwards(x);

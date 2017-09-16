@@ -24,6 +24,10 @@ fn main() {
         None => {println!("Usage: simon.exe music.wav\nOr: cargo run -- music.wav"); return;},
     };
 
+    let countdown = env::args().nth(2).and_then(|x| {
+        x.parse::<u64>().ok()
+    }).unwrap_or(7);
+
     let reader = WavReader::open(&arg).unwrap();
     let sample_time = 0.25;
 
@@ -31,7 +35,7 @@ fn main() {
     let (tx, rx) : (Sender<VisualizerUpdate>, Receiver<VisualizerUpdate>)= channel();
 
     // Countdown allowing you to press play
-    let countdown_dur = Duration::new(7, 0);
+    let countdown_dur = Duration::new(countdown, 0);
     // Program has headstart of a quater of a second
     let headstart = Duration::from_millis((1000.0 * sample_time) as u64);
 
@@ -44,8 +48,8 @@ fn main() {
 
     thread::spawn(move || {
         sleep(headstart);
-        for i in 0..7 {
-            let ii = 7 - i;
+        for i in 0..countdown {
+            let ii = countdown - i;
             println!("{}", ii); 
             sleep(Duration::new(1, 0));
         }

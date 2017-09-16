@@ -35,6 +35,11 @@ struct CircleVisuals {
     start_time : SystemTime,
     last_trigger : Duration,
     last_trigger_value : f64,
+    level : f64,
+    level_prev : f64,
+    level_angle : f64,
+    level_angle_prev : f64,
+    level_beams : usize,
     since_last : u32,
     on : bool,
 }
@@ -45,6 +50,11 @@ impl CircleVisuals {
         CircleVisuals {
             start_time : start_time,
             since_last : 0,
+            level : 0.0,
+            level_prev : 0.0,
+            level_angle : 0.0,
+            level_angle_prev : 0.0,
+            level_beams : 0,
             last_trigger : Duration::new(0, 0),
             last_trigger_value : 0.0,
             on : false,
@@ -60,17 +70,36 @@ impl Visualization for CircleVisuals {
 
         gl_graphics.draw(args.viewport(), |_, gl| {
 
-            let color = if self.on {
-                color_from_val(self.last_trigger_value)
+
+            let threshhold = self.level > 0.6;
+            let bg = if self.on {
+                if threshhold {
+                    color_from_val(1.0 - self.last_trigger_value)
+                }
+                else {
+                    color_from_val(self.last_trigger_value)
+                }
             }
             else {
-                BLACK
+                if threshhold {
+                    WHITE
+                }
+                else {
+                    BLACK
+                }
             };
 
             // For some reason this is bugging out I think?
             // I don't know, you get multiple rings and it looks really cool
             // (but you shouldn't)
-            clear(color, gl);
+            clear(bg, gl);
+
+            let color = if threshhold {
+                BLACK
+            }
+            else {
+                WHITE
+            };
 
             // Circle precision
             let prec : i32 = 32;
@@ -98,7 +127,40 @@ impl Visualization for CircleVisuals {
                     x : r * (TWO_PI * i1_d / prec_d).cos(),
                     y : r * (TWO_PI * i1_d / prec_d).sin(),
                 };
-                line_points(gl, args, WHITE, 1.0, &p1, &p2);
+                line_points(gl, args, color, 1.0, &p1, &p2);
+            }
+
+            // Draw beams
+            for i in 0..self.level_beams {
+                //let origin = Point{x : 0.0, y : 0.0};
+                //
+                let r0 = if threshhold {
+                    self.level_prev * 0.8
+                }
+                else {
+                    self.level_prev * 1.6
+                };
+                let theta0 = self.level_angle_prev + (i as f64) * TWO_PI  / (self.level_beams as f64);
+                let p0 = Point {
+                    x : r0 * (theta0).cos(),
+                    y : r0 * (theta0).sin(),
+
+                };
+
+                let r = if threshhold {
+                    self.level * 0.8
+                }
+                else {
+                    self.level * 1.6
+                };
+
+                let theta = self.level_angle + (i as f64) * TWO_PI  / (self.level_beams as f64);
+                let p = Point{
+                    x : r * (theta).cos(),
+                    y : r * (theta).sin(),
+                };
+                line_points(gl, args, color, 1.0, &p0, &p);
+
             }
         });
     }
@@ -115,7 +177,20 @@ impl Visualization for CircleVisuals {
                     self.last_trigger = update.time;
                     self.last_trigger_value = x;
                 }
+                Level(x) => {
+                    let y = x.abs();
+                    println!("Level {}", y);
+                    self.level_prev = self.level;
+                    self.level = y;
+                    //self.level_beams = (self.level * 50.0).floor() as usize;
+                    self.level_beams = 10;
+                }
                 _ => {}
+            }
+            self.level_angle_prev = self.level_angle;
+            self.level_angle += self.level * 0.04 ;//+ self.last_trigger_value.abs() * 0.04;
+            if (self.level_angle > 2.0 * 3.141) {
+                self.level_angle -= 2.0 * 3.141;
             }
         }
 
@@ -181,6 +256,7 @@ pub fn run(start_time : SystemTime, rx : Receiver<VisualizerUpdate>) {
 
     let mut window : Window = WindowSettings::new("Simon", [800, 600])
         .opengl(opengl)
+        .vsync(true)
         .exit_on_esc(true)
         .build()
         .unwrap();

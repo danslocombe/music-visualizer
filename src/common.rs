@@ -2,6 +2,7 @@ use std::time::Duration;
 
 pub enum UpdateType {
     Intensity(f64),
+    Level(f64),
 }
 
 pub struct VisualizerUpdate {
