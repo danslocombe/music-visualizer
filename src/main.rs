@@ -9,6 +9,8 @@ use std::time::{Duration, SystemTime};
 use std::thread;
 use std::thread::sleep;
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::fs::File;
+use std::path::Path;
 
 use audio::run_audio;
 use common::VisualizerUpdate;
@@ -24,6 +26,14 @@ fn main() {
         None => {println!("Usage: simon.exe music.wav\nOr: cargo run -- music.wav"); return;},
     };
 
+    let path = Path::new(&arg);
+
+    let file = File::open(&path).unwrap();
+
+    let music_start_time = SystemTime::now();
+    let x = audio::mp3::run_audio(file, music_start_time);
+    audio::mp3::test(x);
+    /*
     let countdown = env::args().nth(2).and_then(|x| {
         x.parse::<u64>().ok()
     }).unwrap_or(7);
@@ -60,4 +70,5 @@ fn main() {
     sleep(countdown_dur);
 
     run_audio(reader, tx, sample_time, music_start_time);
+    */
 }

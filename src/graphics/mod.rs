@@ -179,7 +179,6 @@ impl Visualization for CircleVisuals {
                 }
                 Level(x) => {
                     let y = x.abs();
-                    println!("Level {}", y);
                     self.level_prev = self.level;
                     self.level = y;
                     //self.level_beams = (self.level * 50.0).floor() as usize;

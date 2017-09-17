@@ -6,10 +6,22 @@ use std::sync::mpsc::Sender;
 use std::u16::MAX as U16MAX;
 use std::u32::MAX as U32MAX;
 
+pub mod mp3;
+
 use common::VisualizerUpdate;
 use common::UpdateType::*;
 use hound::{Sample, WavReader};
 
+/*
+trait Song: Iterator {
+    fn sample_rate(&self) -> usize;
+}
+*/
+
+pub struct AudioData {
+    pub sample : i32,
+    pub time : Duration,
+}
 
 pub fn run_audio<T : Read>(
     mut reader : WavReader<T>,
@@ -38,7 +50,7 @@ pub fn run_audio<T : Read>(
 
         match sample {
             // Not absing the signal works better odly
-            Ok(x) => parse_sample(x, i, &tx, &start_time, sample_rate, &mut window, &mut triggered),
+            Ok(x) => parse_sample(x.abs(), i, &tx, &start_time, sample_rate, &mut window, &mut triggered),
             Err(e) => println!("ERROR {:?}", e),
         };
     }
