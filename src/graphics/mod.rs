@@ -5,8 +5,7 @@ extern crate opengl_graphics;
 
 use std::sync::mpsc::Receiver;
 
-use common::VisualizerUpdate;
-use common::UpdateType::*;
+use common::GraphicsPacket;
 use self::glutin_window::GlutinWindow as Window;
 use self::opengl_graphics::{Colored, GlGraphics, OpenGL, Textured};
 use self::piston::event_loop::*;
@@ -17,6 +16,7 @@ use std::time::{Duration, SystemTime};
 type Color = [f32; 4];
 
 const WHITE: Color = [1.0, 1.0, 1.0, 1.0];
+const RED: Color = [1.0, 0.0, 0.0, 1.0];
 const BLACK: Color = [0.0, 0.0, 0.0, 1.0];
 
 
@@ -26,28 +26,32 @@ fn color_from_val(x : f64) -> Color {
     [y, y, y, 1.0]
 }
 
+// trait for visualising a single effect
 trait Visualization {
-    fn update(&mut self, args: &UpdateArgs, update_buffer : Vec<VisualizerUpdate>);
+    fn update(&mut self, args: &Vec<f64>, args_time: Duration);
     fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs);
 }
 
-struct CircleVisuals {
+pub struct CircleVisuals {
     start_time : SystemTime,
     last_trigger : Duration,
     last_trigger_value : f64,
     since_last : u32,
     on : bool,
+    color: Color,
+    multiplier: f64,
 }
 
 impl CircleVisuals {
-
-    fn new(start_time : SystemTime) -> Self {
+    pub fn new(start_time: SystemTime, color: Color, mult: f64) -> Self {
         CircleVisuals {
             start_time : start_time,
             since_last : 0,
             last_trigger : Duration::new(0, 0),
             last_trigger_value : 0.0,
             on : false,
+            color: color,
+            multiplier: mult
         }
     }
 }
@@ -56,32 +60,20 @@ impl Visualization for CircleVisuals {
 
     fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
         use graphics::*;
-        use graphics::graphics::clear;
 
         gl_graphics.draw(args.viewport(), |_, gl| {
-
-            let color = if self.on {
-                color_from_val(self.last_trigger_value)
-            }
-            else {
-                BLACK
-            };
-
-            // For some reason this is bugging out I think?
-            // I don't know, you get multiple rings and it looks really cool
-            // (but you shouldn't)
-            clear(color, gl);
-
             // Circle precision
             let prec : i32 = 32;
             let prec_d = prec as f64;
 
             // Circle radius
+            let r_mult = self.last_trigger_value.abs() * self.multiplier.abs();
+
             let r = if self.on {
-                self.last_trigger_value.abs()
+                r_mult
             }
             else {
-                self.last_trigger_value.abs() / (self.since_last as f64)
+                r_mult / (self.since_last as f64)
             } * 2.0;
 
             const TWO_PI : f64 = 6.282;
@@ -98,26 +90,21 @@ impl Visualization for CircleVisuals {
                     x : r * (TWO_PI * i1_d / prec_d).cos(),
                     y : r * (TWO_PI * i1_d / prec_d).sin(),
                 };
-                line_points(gl, args, WHITE, 1.0, &p1, &p2);
+                line_points(gl, args, self.color, 1.0, &p1, &p2);
             }
         });
     }
 
-    fn update(&mut self, args: &UpdateArgs, update_buffer : Vec<VisualizerUpdate>) {
-
+    fn update(&mut self, args: &Vec<f64>, args_time: Duration) {
         self.since_last = self.since_last + 1;
 
-        // Only take last for now
-        for update in update_buffer {
-            match update.update {
-                Intensity(x) => {
-                    self.since_last = 0;
-                    self.last_trigger = update.time;
-                    self.last_trigger_value = x;
-                }
-                _ => {}
-            }
+        if (args.len() > 0) {
+            self.since_last = 0;
+            self.last_trigger = args_time;
+            self.last_trigger_value = args[0];
         }
+
+        //self.on = false;
 
         // Only update if song is playing
         let _ = self.start_time.elapsed().map(|current_time| {
@@ -129,7 +116,45 @@ impl Visualization for CircleVisuals {
 
             self.on = since_trigger < epilepsy_preventation_duration;
         });
+    }
+}
 
+pub struct ActiveEffects {
+    effects: Vec<Box<Visualization>>,
+    // background?
+}
+
+impl ActiveEffects {
+    fn update_all(&mut self, mut update_buffer: Vec<GraphicsPacket>) {
+        let (effect_args, packet_time) = match update_buffer.pop() {
+            Some(p) => (p.effect_args, p.time),
+            None => (vec![Vec::new();self.effects.len()], Duration::new(0,0))
+        };
+    
+        //let effect_args = latest_packet.effect_args;
+
+        //let ref mut effects = self.effects;
+    
+        for (i, e) in self.effects.iter_mut().enumerate() {
+            e.update(&effect_args[0], packet_time);
+        }
+    }
+
+    fn render_all(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
+        use graphics::graphics::clear;
+
+        // For some reason this is bugging out I think?
+        // I don't know, you get multiple rings and it looks really cool
+        // (but you shouldn't)
+        gl_graphics.draw(args.viewport(), |_, gl| {
+            clear(BLACK, gl);
+        });
+        /*let _ = self.effects.iter()
+                    .map(|v| v.render(fps, gl_graphics, args));*/
+
+        for e in self.effects.iter() {
+            e.render(fps, gl_graphics, args);
+        }
     }
 }
 
@@ -175,7 +200,7 @@ fn line_points (gl : &mut GlGraphics,
     });
 }
 
-pub fn run(start_time : SystemTime, rx : Receiver<VisualizerUpdate>) {
+pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>) {
     // Try a different version if this doesn't work
     let opengl = OpenGL::V3_3;
 
@@ -194,9 +219,13 @@ pub fn run(start_time : SystemTime, rx : Receiver<VisualizerUpdate>) {
     let mut visuals: Vec<Box<Visualization>> = Vec::new();
     let mut prev_time = SystemTime::now();
 
-    // visuals- later on, this will init in the interpreter
-    let mut c_vis = CircleVisuals::new(start_time);
-    visuals.push(Box::new(c_vis));
+    //visuals- later on, this will init in the interpreter
+    let mut c_white = CircleVisuals::new(start_time, WHITE, 1.0);
+    visuals.push(Box::new(c_white));
+    let mut c_red = CircleVisuals::new(start_time, RED, 0.1);
+    visuals.push(Box::new(c_red));
+
+    let mut ae = ActiveEffects { effects: visuals };
 
 
     let mut events = Events::new(EventSettings::new());
@@ -209,17 +238,18 @@ pub fn run(start_time : SystemTime, rx : Receiver<VisualizerUpdate>) {
                 prev_time = SystemTime::now();
                 let fps = 1000_000_000.0 / (dt.subsec_nanos() as f64);
 
-                for v in visuals.iter() {
+                /*for v in visuals.iter() {
                     v.render(fps, &mut gl_graphics, &r);
-                }
-                //visuals[0].render(fps, &mut gl_graphics, &r);
+                }*/
+                ae.render_all(fps, &mut gl_graphics, &r);
             }
-            Input::Update(u) => {
+            Input::Update(_) => {
 
                 // Get all the pending updates from the receiver and buffer into list
-                let update_buffer = rx.try_iter().collect::<Vec<VisualizerUpdate>>();
+                let update_buffer = rx.try_iter().collect::<Vec<GraphicsPacket>>();
 
-                visuals[0].update(&u, update_buffer);
+                //visuals.update(&u, update_buffer);
+                ae.update_all(update_buffer);
             }
             Input::Press(i) => {
                 // Ignore for now

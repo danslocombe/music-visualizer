@@ -1,4 +1,4 @@
-use std::collections::LinkedList;
+use std::collections::{LinkedList, HashMap};
 use std::io::Read;
 use std::time::{Duration, SystemTime};
 use std::thread::sleep;
@@ -6,14 +6,13 @@ use std::sync::mpsc::Sender;
 use std::u16::MAX as U16MAX;
 use std::u32::MAX as U32MAX;
 
-use common::VisualizerUpdate;
-use common::UpdateType::*;
+use common::{AudioType, AudioPacket};
 use hound::{Sample, WavReader};
 
 
 pub fn run_audio<T : Read>(
     mut reader : WavReader<T>,
-    tx : Sender<VisualizerUpdate>,
+    tx : Sender<AudioPacket>,
     sample_time : f64,
     start_time : SystemTime) {
 
@@ -47,7 +46,7 @@ pub fn run_audio<T : Read>(
 // Ugly function
 fn parse_sample(
     x : i32,
-    tx : &Sender<VisualizerUpdate>,
+    tx : &Sender<AudioPacket>,
     start_time : &SystemTime,
     sample_rate : u32,
     window : &mut TimeWindow<i32>,
@@ -91,18 +90,19 @@ fn parse_sample(
         }
 
         // Send update to the graphics
-        let i = x as f64 / (U16MAX as f64);
-        let intensity = Intensity(i);
-        let update = VisualizerUpdate {
+        let intensity = x as f64 / (U16MAX as f64);
+        let mut audio_map: HashMap<AudioType, f64> = HashMap::new();
+        audio_map.insert(AudioType::Intensity, intensity);
+        let update = AudioPacket {
             time : trigger_time_dur,
-            update : intensity};
+            audio : audio_map};
         try_send_update(&tx, update);
 
     }
 }
 
 
-fn try_send_update(tx : &Sender<VisualizerUpdate>, update : VisualizerUpdate) {
+fn try_send_update(tx : &Sender<AudioPacket>, update : AudioPacket) {
 
     match tx.send(update) {
         Ok(_) => { /* Sent ok */ }

@@ -1,6 +1,7 @@
 use std::time::Duration;
 use std::collections::HashMap;
 
+#[derive(Hash, PartialEq, Eq)]
 pub enum AudioType {
     Intensity,
     HighFrequency,
@@ -20,12 +21,7 @@ pub struct AudioPacket {
 
 // graphics packet
 
-pub enum VisualEffect {
-    Circles(f64),
-    Dots(f64, f64),
-}
-
 pub struct GraphicsPacket {
-    pub effect: VisualEffect,
+    pub effect_args: Vec<Vec<f64>>,
     pub time: Duration
 }
