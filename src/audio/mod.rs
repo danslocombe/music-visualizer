@@ -3,24 +3,50 @@ use std::io::Read;
 use std::time::{Duration, SystemTime};
 use std::thread::sleep;
 use std::sync::mpsc::Sender;
-use std::u16::MAX as U16MAX;
-use std::u32::MAX as U32MAX;
-
-const MAX : u32 = U32MAX / 8;
+use std::path::Path;
+use std::fs::File;
+use hound::Sample;
 
 pub mod mp3;
+pub mod wav;
 
 use common::VisualizerUpdate;
 use common::UpdateType::*;
-use hound::{Sample, WavReader};
+
+pub trait Song : Iterator<Item=AudioData>{
+    fn sample_max_value(&self) -> u32;
+}
 
 pub struct AudioData {
     pub sample : i32,
     pub time : Duration,
 }
 
+pub fn make_song(path : &Path, start_time : SystemTime) -> Option<Box<Song<Item=AudioData>>> {
+    path.extension().and_then(|ext| {
+        match ext.to_str().unwrap().to_lowercase().as_ref() {
+            "wav" => {
+                let file = File::open(path).unwrap();
+                let wav = wav::WavSong::new(file).unwrap();
+                let x : Box<Song<Item=AudioData>> = Box::new(wav);
+                Some(x)
+            }
+            "mp3" => {
+                let file = File::open(path).unwrap();
+                let mp3 = mp3::Mp3Song::new(file, start_time);
+                let x : Box<Song<Item=AudioData>> = Box::new(mp3);
+                Some(x)
+            }
+            x => {
+                println!("Error: unknown file extension \"{}\"", x);
+                None
+            }
+        }
+    })
+}
+
 pub fn run_audio(
-    mut iter : &mut Iterator<Item=AudioData>,
+    mut song : Box<Song<Item=AudioData>>,
     tx : Sender<VisualizerUpdate>,
     sample_time : f64,
     start_time : SystemTime) {
@@ -33,9 +59,10 @@ pub fn run_audio(
 
     // Whether we are currently above the significant threshold and triggering
     let mut triggered = false;
+    let sample_max = song.sample_max_value();
 
-    for (i, data) in iter.enumerate() {
-        parse_sample(data.sample, i, &tx, data.time, &start_time, &mut window, &mut triggered)
+    for (i, data) in song.enumerate() {
+        parse_sample(data.sample, i, &tx, data.time, &start_time, sample_max, &mut window, &mut triggered)
     }
 }
 
@@ -46,10 +73,9 @@ fn parse_sample(
     tx : &Sender<VisualizerUpdate>,
     time : Duration,
     start_time : &SystemTime,
+    sample_max : u32,
     window : &mut TimeWindow<i32>,
     triggered : &mut bool) {
-
-    //println!("{} {:?}", x, time);
 
     // Arbitrary again
     // 101 prime close to 100
@@ -64,7 +90,7 @@ fn parse_sample(
 
                 // Sleep until the point in the song where we were triggered
                 sleep(time_diff);
-                let i = 5.0 * window.std_dev() / (MAX as f64);
+                let i = 5.0 * window.std_dev() / (sample_max as f64);
                 let level = Level(i);
                 let update = VisualizerUpdate {
                     time : time,
@@ -109,7 +135,7 @@ fn parse_sample(
         }
 
         // Send update to the graphics
-        let i = x as f64 / (MAX as f64);
+        let i = x as f64 / (sample_max as f64);
         let intensity = Intensity(i);
         let update = VisualizerUpdate {
             time : time,

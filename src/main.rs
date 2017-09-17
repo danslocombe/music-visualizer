@@ -28,10 +28,11 @@ fn main() {
 
     let path = Path::new(&arg);
 
-    let file = File::open(&path).unwrap();
-
     let music_start_time = SystemTime::now();
-    let mut mp3 = audio::mp3::run_audio(file, music_start_time);
+    let song = match audio::make_song(&path, music_start_time) {
+        Some(x) => x,
+        None => {::std::process::exit(1);},
+    };
 
     let countdown = env::args().nth(2).and_then(|x| {
         x.parse::<u64>().ok()
@@ -68,5 +69,5 @@ fn main() {
     // Doesn't sleep for headstart duration, but sleeps for countdown
     sleep(countdown_dur);
 
-    run_audio(&mut mp3, tx, sample_time, music_start_time);
+    run_audio(song, tx, sample_time, music_start_time);
 }
