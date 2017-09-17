@@ -6,53 +6,36 @@ use std::sync::mpsc::Sender;
 use std::u16::MAX as U16MAX;
 use std::u32::MAX as U32MAX;
 
+const MAX : u32 = U32MAX / 8;
+
 pub mod mp3;
 
 use common::VisualizerUpdate;
 use common::UpdateType::*;
 use hound::{Sample, WavReader};
 
-/*
-trait Song: Iterator {
-    fn sample_rate(&self) -> usize;
-}
-*/
-
 pub struct AudioData {
     pub sample : i32,
     pub time : Duration,
 }
 
-pub fn run_audio<T : Read>(
-    mut reader : WavReader<T>,
+pub fn run_audio(
+    mut iter : &mut Iterator<Item=AudioData>,
     tx : Sender<VisualizerUpdate>,
     sample_time : f64,
     start_time : SystemTime) {
 
-    let spec = reader.spec();
-    let channels = spec.channels;
-    let sample_rate = spec.sample_rate;
-
     // For now we window over a half a second (Completely arbitrary)
     // This is a quater of a second forwards and backwards in time
-    let window_size = sample_rate as f64 * sample_time;
+    // Assume for now sample rate about 44k
+    let window_size = 44000.0 * sample_time;
     let mut window = TimeWindow::new(window_size as usize);
 
     // Whether we are currently above the significant threshold and triggering
     let mut triggered = false;
 
-    for (i, sample) in reader.samples::<i32>().enumerate() {
-
-        // Skip over all wav channels but the first
-        if i % channels as usize != 0 {
-            continue;
-        }
-
-        match sample {
-            // Not absing the signal works better odly
-            Ok(x) => parse_sample(x.abs(), i, &tx, &start_time, sample_rate, &mut window, &mut triggered),
-            Err(e) => println!("ERROR {:?}", e),
-        };
+    for (i, data) in iter.enumerate() {
+        parse_sample(data.sample, i, &tx, data.time, &start_time, &mut window, &mut triggered)
     }
 }
 
@@ -61,29 +44,30 @@ fn parse_sample(
     x : i32,
     i : usize,
     tx : &Sender<VisualizerUpdate>,
+    time : Duration,
     start_time : &SystemTime,
-    sample_rate : u32,
     window : &mut TimeWindow<i32>,
     triggered : &mut bool) {
+
+    //println!("{} {:?}", x, time);
 
     // Arbitrary again
     // 101 prime close to 100
     if (i % 101 == 0) {
-        let trigger_time = window.current_sample as f64 / sample_rate as f64;
-        let trigger_time_dur = Duration::from_millis((trigger_time * 1000.0) as u64);
         match start_time.elapsed()
                         .ok()
                         .and_then(|current_songtime| {
-            trigger_time_dur.checked_sub(current_songtime)
+            time.checked_sub(current_songtime)
         }) {
             Some(time_diff) => {
+                //println!("time : {:?}, level {}", time, x);
 
                 // Sleep until the point in the song where we were triggered
                 sleep(time_diff);
-                let i = 5.0 * window.std_dev() / (U16MAX as f64);
+                let i = 5.0 * window.std_dev() / (MAX as f64);
                 let level = Level(i);
                 let update = VisualizerUpdate {
-                    time : trigger_time_dur,
+                    time : time,
                     update : level};
                 try_send_update(&tx, update);
             },
@@ -103,15 +87,10 @@ fn parse_sample(
     
         *triggered = sig;
 
-        // Calculate the difference between the time in the song the triggering
-        // happened and the current time in the song's playback
-        let trigger_time = window.current_sample as f64 / sample_rate as f64;
-        let trigger_time_dur = Duration::from_millis((trigger_time * 1000.0) as u64);
-
         match start_time.elapsed()
                         .ok()
                         .and_then(|current_songtime| {
-            trigger_time_dur.checked_sub(current_songtime)
+            time.checked_sub(current_songtime)
         }) {
             Some(time_diff) => {
 
@@ -130,10 +109,10 @@ fn parse_sample(
         }
 
         // Send update to the graphics
-        let i = x as f64 / (U16MAX as f64);
+        let i = x as f64 / (MAX as f64);
         let intensity = Intensity(i);
         let update = VisualizerUpdate {
-            time : trigger_time_dur,
+            time : time,
             update : intensity};
         try_send_update(&tx, update);
 

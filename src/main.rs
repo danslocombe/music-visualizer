@@ -31,14 +31,13 @@ fn main() {
     let file = File::open(&path).unwrap();
 
     let music_start_time = SystemTime::now();
-    let x = audio::mp3::run_audio(file, music_start_time);
-    audio::mp3::test(x);
-    /*
+    let mut mp3 = audio::mp3::run_audio(file, music_start_time);
+
     let countdown = env::args().nth(2).and_then(|x| {
         x.parse::<u64>().ok()
     }).unwrap_or(7);
 
-    let reader = WavReader::open(&arg).unwrap();
+    //let reader = WavReader::open(&arg).unwrap();
     let sample_time = 0.25;
 
     // Create a transmitter and receiver for updates
@@ -69,6 +68,5 @@ fn main() {
     // Doesn't sleep for headstart duration, but sleeps for countdown
     sleep(countdown_dur);
 
-    run_audio(reader, tx, sample_time, music_start_time);
-    */
+    run_audio(&mut mp3, tx, sample_time, music_start_time);
 }

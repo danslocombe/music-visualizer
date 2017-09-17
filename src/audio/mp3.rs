@@ -12,6 +12,7 @@ pub struct Mp3Song<T : Read> {
     decoder : Decoder<T>,
     current_frame : Option<Frame>,
     current_frame_sample : usize,
+    current_time : Duration,
 }
 
 impl<T : Read> Mp3Song<T> {
@@ -40,6 +41,12 @@ impl<T : Read> Mp3Song<T> {
             }
         })
     }
+
+    fn update(&mut self) {
+        let frame = self.current_frame.as_ref().unwrap();
+        self.current_frame_sample += 1;
+        self.current_time += frame.duration / frame.samples[0].len() as u32;
+    }
 }
 
 impl<T : Read> Iterator for Mp3Song<T> {
@@ -50,7 +57,7 @@ impl<T : Read> Iterator for Mp3Song<T> {
         let sample2 = match sample {
             Some(x) => {
                 // Sample was fetched ok, iterate the current sample and go
-                self.current_frame_sample += 1;
+                self.update();
                 Some(x)
             }
             None  => {
@@ -60,8 +67,9 @@ impl<T : Read> Iterator for Mp3Song<T> {
                     // If we just got an empty frame we end the stream
                     // but maybe we should try the next one?
                     let x = self.get_sample_from_frame();
-                    println!("got udpate, with {}", x.is_some());
-                    self.current_frame_sample += 1;
+                    if (x.is_some()) {
+                        self.update();
+                    }
                     x
                 }
                 else {
@@ -77,7 +85,7 @@ impl<T : Read> Iterator for Mp3Song<T> {
             // Otherwise construct an AudioData packet
             AudioData {
                 sample : s.to_i32(),
-                time : self.start_time.elapsed().unwrap(),
+                time : self.current_time,
             }
         })
     }
@@ -104,14 +112,8 @@ pub fn run_audio<T : Read>(r : T, start_time : SystemTime) -> Mp3Song<T>{
         start_time : start_time,
         current_frame : mframe,
         current_frame_sample : 0,
+        current_time : Duration::new(0, 0),
     };
     s
 
-}
-
-pub fn test<T : Read>(x : Mp3Song<T>) {
-    println!("AJWF");
-    for sample in x {
-        //println!("{:?} {}", sample.time, sample.sample);
-    }
 }
