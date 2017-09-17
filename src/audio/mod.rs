@@ -1,17 +1,15 @@
-use std::collections::LinkedList;
+use std::collections::{LinkedList, HashMap};
 use std::io::Read;
 use std::time::{Duration, SystemTime};
 use std::thread::sleep;
 use std::sync::mpsc::Sender;
 use std::path::Path;
 use std::fs::File;
-use hound::Sample;
+use common::{AudioType, AudioPacket};
+use hound::{Sample, WavReader};
 
 pub mod mp3;
 pub mod wav;
-
-use common::VisualizerUpdate;
-use common::UpdateType::*;
 
 pub trait Song : Iterator<Item=AudioData>{
     fn sample_max_value(&self) -> u32;
@@ -47,106 +45,106 @@ pub fn make_song(path : &Path, start_time : SystemTime) -> Option<Box<Song<Item=
 
 pub fn run_audio(
     mut song : Box<Song<Item=AudioData>>,
-    tx : Sender<VisualizerUpdate>,
+    tx : Sender<AudioPacket>,
     sample_time : f64,
     start_time : SystemTime) {
-
-    // For now we window over a half a second (Completely arbitrary)
-    // This is a quater of a second forwards and backwards in time
-    // Assume for now sample rate about 44k
-    let window_size = 44000.0 * sample_time;
-    let mut window = TimeWindow::new(window_size as usize);
 
     // Whether we are currently above the significant threshold and triggering
     let mut triggered = false;
     let sample_max = song.sample_max_value();
 
+    let mut audio_proc = AudioProcessor::new(tx, sample_time, start_time, sample_max);
+
     for (i, data) in song.enumerate() {
-        parse_sample(data.sample, i, &tx, data.time, &start_time, sample_max, &mut window, &mut triggered)
+        audio_proc.process_sample(data.sample, data.time);
     }
 }
 
-// Ugly function
-fn parse_sample(
-    x : i32,
-    i : usize,
-    tx : &Sender<VisualizerUpdate>,
-    time : Duration,
-    start_time : &SystemTime,
+struct AudioProcessor {
+    window : TimeWindow<i32>,
+    tx : Sender<AudioPacket>,
+    start_time : SystemTime,
     sample_max : u32,
-    window : &mut TimeWindow<i32>,
-    triggered : &mut bool) {
+    impulse_triggered : bool,
+    sample_number : usize,
+}
 
-    // Arbitrary again
-    // 101 prime close to 100
-    if (i % 101 == 0) {
-        match start_time.elapsed()
-                        .ok()
-                        .and_then(|current_songtime| {
-            time.checked_sub(current_songtime)
-        }) {
-            Some(time_diff) => {
-                //println!("time : {:?}, level {}", time, x);
+impl AudioProcessor {
+    fn new(tx : Sender<AudioPacket>, sample_time : f64, start_time : SystemTime, sample_max : u32) -> Self {
 
-                // Sleep until the point in the song where we were triggered
-                sleep(time_diff);
-                let i = 5.0 * window.std_dev() / (sample_max as f64);
-                let level = Level(i);
-                let update = VisualizerUpdate {
-                    time : time,
-                    update : level};
-                try_send_update(&tx, update);
-            },
-            None => {
-            }
+        // For now we window over a half a second (Completely arbitrary)
+        // This is a quater of a second forwards and backwards in time
+        // Assume for now sample rate about 44k
+        let window_size = 44000.0 * sample_time;
+        let window = TimeWindow::new(window_size as usize);
+        AudioProcessor {
+            tx : tx,
+            window : window,
+            start_time : start_time,
+            sample_number : 0,
+            sample_max : sample_max,
+            impulse_triggered : false,
         }
     }
 
-    // Add the new sample to the window
-    window.step_forwards(x);
+    fn process_sample(&mut self, x : i32, time : Duration) {
 
-    // Check if the new sample is significant
-    let sig = window.current_significant();
+        // Add the new sample to the window
+        self.window.step_forwards(x);
 
-    // If we are switiching to a new state
-    if sig != *triggered {
-    
-        *triggered = sig;
+        // Check if the new sample is significant
+        let sig = self.window.current_significant();
 
-        match start_time.elapsed()
-                        .ok()
-                        .and_then(|current_songtime| {
-            time.checked_sub(current_songtime)
-        }) {
-            Some(time_diff) => {
-
-                // Sleep until the point in the song where we were triggered
-                sleep(time_diff);
-            },
-            None => {
-                // Errors can occur at several points
-                // SystemTime can get out of sync randomly
-                // We can get behind the song
-                // We can be triggered before the song starts
-                //
-                // I think there are some problems in the first 3 + backfill
-                // seconds as well
-            }
+        if (sig) {
+            self.impulse_triggered = true;
         }
 
-        // Send update to the graphics
-        let i = x as f64 / (sample_max as f64);
-        let intensity = Intensity(i);
-        let update = VisualizerUpdate {
-            time : time,
-            update : intensity};
-        try_send_update(&tx, update);
+        // Arbitrary again
+        if (self.sample_number % 400 == 0) {
 
+            let mut audio_map: HashMap<AudioType, f64> = HashMap::new();
+
+            // If we are switiching to a new state
+            let impulse_intensity = if self.impulse_triggered {
+                x as f64 / (self.sample_max as f64)
+            }
+            else {
+                0.0
+            };
+
+            self.impulse_triggered = false;
+
+            audio_map.insert(AudioType::Impulse, impulse_intensity);
+
+            match self.start_time.elapsed()
+                            .ok()
+                            .and_then(|current_songtime| { 
+                                       time.checked_sub(current_songtime)
+                            })
+            {
+                Some(time_diff) => {
+
+                    // Sleep until the point in the song where we were triggered
+                    sleep(time_diff);
+
+                    let i = 5.0 * self.window.std_dev() / (self.sample_max as f64);
+                    //let level = x as f64 / (sample_max as f64);
+                    audio_map.insert(AudioType::Level, i);
+                    let update = AudioPacket {
+                        time : time,
+                        audio : audio_map};
+                    try_send_update(&self.tx, update);
+                },
+                None => {
+                }
+            }
+        }
+        self.sample_number += 1;
     }
 }
 
 
-fn try_send_update(tx : &Sender<VisualizerUpdate>, update : VisualizerUpdate) {
+fn try_send_update(tx : &Sender<AudioPacket>, update : AudioPacket) {
 
     match tx.send(update) {
         Ok(_) => { /* Sent ok */ }

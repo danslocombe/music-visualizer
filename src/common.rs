@@ -1,12 +1,23 @@
 use std::time::Duration;
+use std::collections::HashMap;
 
-pub enum UpdateType {
-    Intensity(f64),
-    Level(f64),
+#[derive(Hash, PartialEq, Eq)]
+pub enum AudioType {
+    Impulse,
+    Level,
+    HighFrequency,
+    LowFrequency,
+    // and many more
 }
 
-pub struct VisualizerUpdate {
-    pub update : UpdateType,
-    pub time : Duration
+pub struct AudioPacket {
+    pub audio: HashMap<AudioType, f64>,
+    pub time: Duration
 }
 
+// graphics packet
+
+pub struct GraphicsPacket {
+    pub effect_args: Vec<Vec<f64>>,
+    pub time: Duration
+}

@@ -3,6 +3,7 @@ extern crate hound;
 mod audio;
 mod common;
 mod graphics;
+mod module_map;
 
 use std::env;
 use std::time::{Duration, SystemTime};
@@ -13,7 +14,8 @@ use std::fs::File;
 use std::path::Path;
 
 use audio::run_audio;
-use common::VisualizerUpdate;
+use common::*;
+use module_map::*;
 use graphics::run as run_visualizer;
 use hound::WavReader;
 
@@ -42,7 +44,8 @@ fn main() {
     let sample_time = 0.25;
 
     // Create a transmitter and receiver for updates
-    let (tx, rx) : (Sender<VisualizerUpdate>, Receiver<VisualizerUpdate>)= channel();
+    let (txa, rxa) : (Sender<AudioPacket>, Receiver<AudioPacket>) = channel();
+    let (txg, rxg) : (Sender<GraphicsPacket>, Receiver<GraphicsPacket>) = channel();
 
     // Countdown allowing you to press play
     let countdown_dur = Duration::new(countdown, 0);
@@ -53,7 +56,23 @@ fn main() {
 
     // Start the graphics
     thread::spawn(move || {
-        run_visualizer(music_start_time, rx);
+        run_visualizer(music_start_time, rxg);
+    });
+
+    // Temp: generate mapper
+    /*let mapper = Mapper {
+        input_audio: vec![AudioOption::Var(AudioType::Intensity)],
+        //effect_gen: Box::new(move |v: Vec<f64>| v),
+    };*/
+
+    let mappers: Vec<Mapper> = vec![
+        Mapper { input_audio: vec![AudioOption::Var(AudioType::Impulse)] },
+        Mapper { input_audio: vec![AudioOption::Var(AudioType::Level)] },
+    ];
+
+    // Start the mapper
+    thread::spawn(move || {
+        run_map(rxa, txg, &mappers);
     });
 
     thread::spawn(move || {
@@ -69,5 +88,5 @@ fn main() {
     // Doesn't sleep for headstart duration, but sleeps for countdown
     sleep(countdown_dur);
 
-    run_audio(song, tx, sample_time, music_start_time);
+    run_audio(song, txa, sample_time, music_start_time);
 }
