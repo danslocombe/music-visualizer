@@ -49,10 +49,7 @@ pub fn run_audio(
     sample_time : f64,
     start_time : SystemTime) {
 
-    // Whether we are currently above the significant threshold and triggering
-    let mut triggered = false;
     let sample_max = song.sample_max_value();
-
     let mut audio_proc = AudioProcessor::new(tx, sample_time, start_time, sample_max);
 
     for (i, data) in song.enumerate() {
