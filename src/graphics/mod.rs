@@ -98,7 +98,7 @@ impl Visualization for CircleVisuals {
     fn update(&mut self, args: &Vec<f64>, args_time: Duration) {
         self.since_last = self.since_last + 1;
 
-        if (args.len() > 0) {
+        if args.len() > 0 {
             self.since_last = 0;
             self.last_trigger = args_time;
             self.last_trigger_value = args[0];
@@ -136,7 +136,7 @@ impl ActiveEffects {
         //let ref mut effects = self.effects;
     
         for (i, e) in self.effects.iter_mut().enumerate() {
-            e.update(&effect_args[0], packet_time);
+            e.update(&effect_args[i], packet_time);
         }
     }
 
@@ -220,9 +220,9 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>) {
     let mut prev_time = SystemTime::now();
 
     //visuals- later on, this will init in the interpreter
-    let mut c_white = CircleVisuals::new(start_time, WHITE, 1.0);
+    let c_white = CircleVisuals::new(start_time, WHITE, 1.0);
     visuals.push(Box::new(c_white));
-    let mut c_red = CircleVisuals::new(start_time, RED, 0.1);
+    let c_red = CircleVisuals::new(start_time, RED, 0.1);
     visuals.push(Box::new(c_red));
 
     let mut ae = ActiveEffects { effects: visuals };
@@ -238,9 +238,6 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>) {
                 prev_time = SystemTime::now();
                 let fps = 1000_000_000.0 / (dt.subsec_nanos() as f64);
 
-                /*for v in visuals.iter() {
-                    v.render(fps, &mut gl_graphics, &r);
-                }*/
                 ae.render_all(fps, &mut gl_graphics, &r);
             }
             Input::Update(_) => {
@@ -248,7 +245,6 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>) {
                 // Get all the pending updates from the receiver and buffer into list
                 let update_buffer = rx.try_iter().collect::<Vec<GraphicsPacket>>();
 
-                //visuals.update(&u, update_buffer);
                 ae.update_all(update_buffer);
             }
             Input::Press(i) => {
