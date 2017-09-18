@@ -1,12 +1,14 @@
-use std::sync::mpsc::{Receiver, Sender};
+
 
 // use interpret
+
 use common::*;
+use std::sync::mpsc::{Receiver, Sender};
 
 // used to select between constant and variable opts
 pub enum AudioOption {
     Const(f64),
-    Var(AudioType)
+    Var(AudioType),
 }
 
 
@@ -17,7 +19,8 @@ pub struct Mapper {
 }
 
 impl Mapper {
-    pub fn new(input_audio: Vec<AudioOption>/*, effect_gen: Box<(FnOnce(Vec<f64>) -> Vec<f64>)>*/) -> Self {
+    pub fn new(input_audio: Vec<AudioOption> /*, effect_gen: Box<(FnOnce(Vec<f64>) -> Vec<f64>)>*/)
+        -> Self {
         Mapper {
             input_audio: input_audio,
             //effect_gen: effect_gen
@@ -30,12 +33,11 @@ impl Mapper {
             args.push(inputs.audio[input]);
         }*/
         // let args =...
-        self.input_audio.iter()
-            .map(|o| {
-                match o {
-                    &AudioOption::Var(ref v) => inputs.audio.get(&v).unwrap().clone(),
-                    &AudioOption::Const(ref x) => x.clone()
-                }
+        self.input_audio
+            .iter()
+            .map(|o| match *o {
+                AudioOption::Var(ref v) => inputs.audio[v],
+                AudioOption::Const(ref x) => *x,
             })
             .collect::<Vec<f64>>()
 
@@ -44,17 +46,22 @@ impl Mapper {
 }
 
 
-pub fn run_map(audio_rx: Receiver<AudioPacket>, graphics_tx: Sender<GraphicsPacket>, mappers: &Vec<Mapper>) {
-    while let Ok(audio_in) = audio_rx.recv(){
+pub fn run_map(
+    audio_rx: &Receiver<AudioPacket>,
+    graphics_tx: &Sender<GraphicsPacket>,
+    mappers: &[Mapper],
+) {
+    while let Ok(audio_in) = audio_rx.recv() {
 
-        let effect_args = mappers.iter()
-                                 .map(|m| m.generate(&audio_in))
-                                 .collect::<Vec<Vec<f64>>>();
+        let effect_args = mappers
+            .iter()
+            .map(|m| m.generate(&audio_in))
+            .collect::<Vec<Vec<f64>>>();
 
         let packet = GraphicsPacket {
-                        effect_args: effect_args,
-                        time: audio_in.time
-                     };
+            effect_args: effect_args,
+            time: audio_in.time,
+        };
 
         graphics_tx.send(packet).unwrap();
     }

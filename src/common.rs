@@ -1,5 +1,5 @@
-use std::time::Duration;
 use std::collections::HashMap;
+use std::time::Duration;
 
 #[derive(Hash, PartialEq, Eq)]
 pub enum AudioType {
@@ -12,12 +12,12 @@ pub enum AudioType {
 
 pub struct AudioPacket {
     pub audio: HashMap<AudioType, f64>,
-    pub time: Duration
+    pub time: Duration,
 }
 
 // graphics packet
 
 pub struct GraphicsPacket {
     pub effect_args: Vec<Vec<f64>>,
-    pub time: Duration
+    pub time: Duration,
 }
