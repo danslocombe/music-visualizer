@@ -1,7 +1,8 @@
 use std::time::Duration;
 use std::collections::HashMap;
 
-#[derive(Hash, PartialEq, Eq)]
+// audio outputs
+#[derive(Hash, PartialEq, Eq, Debug)]
 pub enum AudioType {
     Impulse,
     Level,
@@ -10,14 +11,25 @@ pub enum AudioType {
     // and many more
 }
 
+// variable arguments for visualizers
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
+pub enum GArg {
+    Size,
+    R,
+    G,
+    B,
+    Scale,
+    Count,
+}
+
+// packets of data passed between threads
+
 pub struct AudioPacket {
     pub audio: HashMap<AudioType, f64>,
     pub time: Duration
 }
 
-// graphics packet
-
 pub struct GraphicsPacket {
-    pub effect_args: Vec<Vec<f64>>,
+    pub effect_args: Vec<Vec<(GArg, f64)>>,
     pub time: Duration
 }

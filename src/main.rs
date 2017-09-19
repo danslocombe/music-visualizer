@@ -66,8 +66,8 @@ fn main() {
     };*/
 
     let mappers: Vec<Mapper> = vec![
-        Mapper { input_audio: vec![AudioOption::Var(AudioType::Impulse)] },
-        Mapper { input_audio: vec![AudioOption::Var(AudioType::Level)] },
+        Mapper { input_audio: vec![(AudioOption::Var(AudioType::Impulse), GArg::Size)] },
+        Mapper { input_audio: vec![(AudioOption::Var(AudioType::Level), GArg::Size)]}
     ];
 
     // Start the mapper

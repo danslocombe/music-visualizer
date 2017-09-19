@@ -5,7 +5,7 @@ extern crate opengl_graphics;
 
 use std::sync::mpsc::Receiver;
 
-use common::GraphicsPacket;
+use common::{GArg, GraphicsPacket};
 use self::glutin_window::GlutinWindow as Window;
 use self::opengl_graphics::{Colored, GlGraphics, OpenGL, Textured};
 use self::piston::event_loop::*;
@@ -32,7 +32,7 @@ fn color_from_val(x : f64) -> Color {
 
 // trait for visualising a single effect
 trait Visualization {
-    fn update(&mut self, args: &[f64], args_time: Duration);
+    fn update(&mut self, args: &[(GArg, f64)], args_time: Duration);
     fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs);
 }
 
@@ -94,9 +94,9 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>) {
     let mut prev_time = SystemTime::now();
 
     //visuals- later on, this will init in the interpreter
-    let c_white = CircleVisuals::new(start_time, WHITE, 1.0);
+    let c_white = CircleVisuals::new(start_time);
     visuals.push(Box::new(c_white));
-    let c_red = DotsVisuals::new(RED, 8, 1.0);
+    let c_red = DotsVisuals::newv(vec![(GArg::Count,8.0),(GArg::R,0.0),(GArg::G,0.5),(GArg::B,0.7)].as_slice()); // red, 8, 1.0
     visuals.push(Box::new(c_red));
 
     let mut ae = ActiveEffects { effects: visuals };
