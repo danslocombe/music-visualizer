@@ -2,7 +2,7 @@ use std::time::Duration;
 use std::collections::HashMap;
 
 // audio outputs
-#[derive(Hash, PartialEq, Eq, Debug)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum AudioType {
     Impulse,
     Level,

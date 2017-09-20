@@ -13,7 +13,7 @@ use self::piston::window::WindowSettings;
 use self::piston::input::*;
 use std::time::{Duration, SystemTime};
 
-mod geom_visuals;
+pub mod geom_visuals;
 
 use self::geom_visuals::*;
 
@@ -31,13 +31,13 @@ fn color_from_val(x : f64) -> Color {
 }
 
 // trait for visualising a single effect
-trait Visualization {
+pub trait Visualization {
     fn update(&mut self, args: &[(GArg, f64)], args_time: Duration);
     fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs);
 }
 
 pub struct ActiveEffects {
-    effects: Vec<Box<Visualization>>,
+    pub effects: Vec<Box<Visualization + Send>>,
     // background?
 }
 
@@ -73,7 +73,7 @@ impl ActiveEffects {
     }
 }
 
-pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>) {
+pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>, effects: ActiveEffects) {
     // Try a different version if this doesn't work
     let opengl = OpenGL::V3_3;
 
@@ -90,16 +90,16 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>) {
     let mut gl_graphics = GlGraphics::from_colored_textured(c, t);
 
     //let mut visuals = CircleVisuals::new(start_time);
-    let mut visuals: Vec<Box<Visualization>> = Vec::new();
+    //let mut visuals: Vec<Box<Visualization>> = Vec::new();
     let mut prev_time = SystemTime::now();
 
     //visuals- later on, this will init in the interpreter
-    let c_white = CircleVisuals::new(start_time);
+    /*let c_white = CircleVisuals::new(start_time);
     visuals.push(Box::new(c_white));
     let c_red = DotsVisuals::newv(vec![(GArg::Count,8.0),(GArg::R,0.0),(GArg::G,0.5),(GArg::B,0.7)].as_slice()); // red, 8, 1.0
-    visuals.push(Box::new(c_red));
+    visuals.push(Box::new(c_red));*/
 
-    let mut ae = ActiveEffects { effects: visuals };
+    let mut ae = effects;
 
 
     let mut events = Events::new(EventSettings::new());

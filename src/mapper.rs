@@ -4,6 +4,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use common::*;
 
 // used to select between constant and variable opts
+#[derive(Clone,Debug)]
 pub enum AudioOption {
     Const(f64),
     Var(AudioType)

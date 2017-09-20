@@ -1,9 +1,13 @@
+#[macro_use]
+extern crate nom;
+
 extern crate hound;
 
 mod audio;
 mod common;
 mod graphics;
-mod module_map;
+mod mapper;
+mod parser;
 
 use std::env;
 use std::time::{Duration, SystemTime};
@@ -15,20 +19,30 @@ use std::path::Path;
 
 use audio::run_audio;
 use common::*;
-use module_map::*;
-use graphics::run as run_visualizer;
+use mapper::*;
+use parser::*;
+use graphics::{run as run_visualizer, ActiveEffects};
 use hound::WavReader;
 
 
 fn main() {
 
     // Load wav from first arg
-    let arg = match env::args().nth(1) {
+    let music_arg = match env::args().nth(1) {
         Some(x) => x,
-        None => {println!("Usage: simon.exe music.wav\nOr: cargo run -- music.wav"); return;},
+        None => {println!("Usage: simon.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
     };
 
-    let path = Path::new(&arg);
+    // Load and parse file from second arg
+    let script_arg = match env::args().nth(2) {
+        Some(x) => x,
+        None => {println!("Usage: simon.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
+    };
+
+    let (visuals,mappers) = parse_from_file(&script_arg);
+    let effects = ActiveEffects {effects: visuals};
+
+    let path = Path::new(&music_arg);
 
     let music_start_time = SystemTime::now();
     let song = match audio::make_song(&path, music_start_time) {
@@ -56,7 +70,7 @@ fn main() {
 
     // Start the graphics
     thread::spawn(move || {
-        run_visualizer(music_start_time, rxg);
+        run_visualizer(music_start_time, rxg, effects);
     });
 
     // Temp: generate mapper
@@ -65,10 +79,10 @@ fn main() {
         //effect_gen: Box::new(move |v: Vec<f64>| v),
     };*/
 
-    let mappers: Vec<Mapper> = vec![
+    /*let mappers: Vec<Mapper> = vec![
         Mapper { input_audio: vec![(AudioOption::Var(AudioType::Impulse), GArg::Size)] },
         Mapper { input_audio: vec![(AudioOption::Var(AudioType::Level), GArg::Size)]}
-    ];
+    ];*/
 
     // Start the mapper
     thread::spawn(move || {
