@@ -19,7 +19,7 @@ use std::path::Path;
 
 use audio::run_audio;
 use common::*;
-use mapper::*;
+use mapper::run as run_map;
 use parser::*;
 use graphics::{run as run_visualizer, ActiveEffects};
 use hound::WavReader;
@@ -72,17 +72,6 @@ fn main() {
     thread::spawn(move || {
         run_visualizer(music_start_time, rxg, effects);
     });
-
-    // Temp: generate mapper
-    /*let mapper = Mapper {
-        input_audio: vec![AudioOption::Var(AudioType::Intensity)],
-        //effect_gen: Box::new(move |v: Vec<f64>| v),
-    };*/
-
-    /*let mappers: Vec<Mapper> = vec![
-        Mapper { input_audio: vec![(AudioOption::Var(AudioType::Impulse), GArg::Size)] },
-        Mapper { input_audio: vec![(AudioOption::Var(AudioType::Level), GArg::Size)]}
-    ];*/
 
     // Start the mapper
     thread::spawn(move || {

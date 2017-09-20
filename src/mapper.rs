@@ -10,7 +10,6 @@ pub enum AudioOption {
     Var(AudioType)
 }
 
-
 // used to map inputs to a single graphic object
 pub struct Mapper {
     pub input_audio: Vec<(AudioOption, GArg)>,
@@ -24,11 +23,6 @@ impl Mapper {
     }
 
     fn generate(&self, inputs: &AudioPacket) -> Vec<(GArg, f64)> {
-        /*let mut args: Vec<f64> = Vec::new();
-        for input in self.input_audio {
-            args.push(inputs.audio[input]);
-        }*/
-        // let args =...
         self.input_audio.iter()
             .map(|&(ref o,ref a)| {
                 match o {
@@ -37,19 +31,10 @@ impl Mapper {
                 }
             })
             .collect::<Vec<(GArg, f64)>>()
-
-        //self.effect_gen(args)
     }
 }
 
-/*fn match_args(arg: &(AudioOption, GArg)) -> (GArg, f64) {
-    let ref o,ref a = arg;
-    match o {
-        &AudioOption::Var
-    }
-}*/
-
-pub fn run_map(audio_rx: Receiver<AudioPacket>, graphics_tx: Sender<GraphicsPacket>, mappers: &Vec<Mapper>) {
+pub fn run(audio_rx: Receiver<AudioPacket>, graphics_tx: Sender<GraphicsPacket>, mappers: &Vec<Mapper>) {
     while let Ok(audio_in) = audio_rx.recv(){
 
         let effect_args = mappers.iter()

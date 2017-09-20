@@ -17,7 +17,7 @@ use graphics::geom_visuals::*;
 use std::time::SystemTime;
 
 
-named!(parse_script<&[u8], Vec<(Box<Visualization + Send>,Mapper)> >,
+named!(parse_script<&[u8], Vec<(Box<Visualization>,Mapper)> >,
     many1!(
     //do_parse!(
         //opt!(multispace)          >>
@@ -28,7 +28,7 @@ named!(parse_script<&[u8], Vec<(Box<Visualization + Send>,Mapper)> >,
     )
 );
 
-named!(p_visualizer<&[u8], (Box<Visualization + Send>,Mapper)>,
+named!(p_visualizer<&[u8], (Box<Visualization>,Mapper)>,
     do_parse!(
         vis: alpha              >>
         opt!(multispace)          >>
@@ -95,7 +95,7 @@ named!(p_garg_name<&[u8], GArg>,
 
 
 
-pub fn parse_from_file(file_name: &str) -> (Vec<Box<Visualization + Send>>, Vec<Mapper>) {
+pub fn parse_from_file(file_name: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>) {
     let mut input_file = File::open(file_name).unwrap();
     let mut file_contents = String::new();
     input_file.read_to_string(&mut file_contents);
@@ -105,7 +105,7 @@ pub fn parse_from_file(file_name: &str) -> (Vec<Box<Visualization + Send>>, Vec<
     parse_from_string(file_contents.as_str())
 }
 
-pub fn parse_from_string(text: &str) -> (Vec<Box<Visualization + Send>>, Vec<Mapper>) {
+pub fn parse_from_string(text: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>) {
     let mut output = match parse_script(text.as_bytes()) {
         IResult::Done(_,o) => o,
         IResult::Incomplete(i) => panic!("Incomplete: {:?}", i),
@@ -129,7 +129,7 @@ pub fn parse_from_string(text: &str) -> (Vec<Box<Visualization + Send>>, Vec<Map
 fn output_visualizer(vis_name: &[u8],
                      args: Option<Vec<(AudioOption,GArg)>>,
                      final_arg: Option<(AudioOption,GArg)>)
-                     -> (Box<Visualization + Send>, Mapper) {
+                     -> (Box<Visualization>, Mapper) {
     // combine arg lists
     let mut arg_list = match args {
         Some(l) => l,
