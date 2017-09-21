@@ -1,0 +1,2 @@
+circles(Size=Impulse, R=1.0, G=0.0, B=0.0, Scale=1.5)
+dots(Size=Level, R=0.5, G=0.3, B=0.0, Count=10.0)

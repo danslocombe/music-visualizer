@@ -84,7 +84,8 @@ pub struct CircleVisuals {
 
 impl CircleVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Scale,1.0];
+        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Scale,1.0;
+                             GArg::X,0.5;GArg::Y,0.5];
         CircleVisuals {
             start_time : SystemTime::now(),
             since_last : 0,
@@ -113,6 +114,10 @@ impl Visualization for CircleVisuals {
             let prec : i32 = 32;
             let prec_d = prec as f64;
 
+            // Circle centre
+            let x_cent = (arg(&self.vars,GArg::X) * 2.0) - 1.0;
+            let y_cent = (arg(&self.vars,GArg::Y) * 2.0) - 1.0;
+
             // Circle radius
             let r_mult = arg(&self.vars,GArg::Size).abs() * arg(&self.vars,GArg::Scale).abs();
 
@@ -129,12 +134,12 @@ impl Visualization for CircleVisuals {
                 let i_d = i as f64;
                 let i1_d = (i + 1) as f64;
                 let p1 = Point{
-                    x : r * (TWO_PI * i_d / prec_d).cos(),
-                    y : r * (TWO_PI * i_d / prec_d).sin(),
+                    x : (r * (TWO_PI * i_d / prec_d).cos()) + x_cent,
+                    y : (r * (TWO_PI * i_d / prec_d).sin()) + y_cent,
                 };
                 let p2 = Point{
-                    x : r * (TWO_PI * i1_d / prec_d).cos(),
-                    y : r * (TWO_PI * i1_d / prec_d).sin(),
+                    x : (r * (TWO_PI * i1_d / prec_d).cos()) + x_cent,
+                    y : (r * (TWO_PI * i1_d / prec_d).sin()) + y_cent,
                 };
                 line_points(gl, args, color, 1.0, &p1, &p2);
             }
@@ -181,7 +186,9 @@ pub struct DotsVisuals {
 
 impl DotsVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Scale,1.0;GArg::Count,32.0];
+        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;
+                             GArg::Scale,1.0;GArg::Count,32.0;
+                             GArg::X,0.5;GArg::Y,0.5];
         DotsVisuals {
             since_last : 0,
             size_prev : 0.0,
@@ -206,8 +213,12 @@ impl Visualization for DotsVisuals {
         use graphics::*;
 
         gl_graphics.draw(args.viewport(), |_, gl| {
+            // centre of dots
+            let x_cent = (arg(&self.vars,GArg::X) * 2.0) - 1.0;
+            let y_cent = (arg(&self.vars,GArg::Y) * 2.0) - 1.0;
 
             let color = cons_color(&self.vars);
+
             // Draw a circle of radius r
             let dots = arg(&self.vars,GArg::Count) as u32;
             for i in 0..dots {
@@ -215,15 +226,14 @@ impl Visualization for DotsVisuals {
                 let theta0 = self.angle_prev + (i as f64) * TWO_PI / arg(&self.vars,GArg::Count);
                 let r1 = arg(&self.vars,GArg::Size) * arg(&self.vars,GArg::Scale);
                 let theta = self.angle + (i as f64) * TWO_PI / arg(&self.vars,GArg::Count);
-
             
                 let p0 = Point{
-                    x : r0 * (theta0).cos(),
-                    y : r0 * (theta0).sin(),
+                    x : (r0 * (theta0).cos()) + x_cent,
+                    y : (r0 * (theta0).sin()) + y_cent,
                 };
                 let p1 = Point{
-                    x : r1 * theta.cos(),
-                    y : r1 * theta.sin(),
+                    x : (r1 * theta.cos()) + x_cent,
+                    y : (r1 * theta.sin()) + y_cent,
                 };
 
                 line_points(gl, args, color, 1.0, &p0, &p1);

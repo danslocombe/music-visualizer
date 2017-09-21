@@ -6,6 +6,10 @@ This is a programmable music visualizer written in Rust. You can write a script 
 It uses a number of external crates, notably Piston for graphical output. 
 
 
+## Usage
+You'll need cargo. To get going quickly: `cargo run [audio file] [script]`.
+
+
 ## Scripts
 Writing a script is easy. You can find an example script in the /examples folder.
 
@@ -45,4 +49,5 @@ MP3 & WAV
 * Normalise audio data, and sync more with graphics.
 * Add backgrounds/post processing effects.
 * Add better ways of dealing with colour (HSV).
+* Add decay controls to primitives.
 * More graphic effects!

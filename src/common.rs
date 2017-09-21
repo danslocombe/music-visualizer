@@ -28,6 +28,8 @@ pub enum GArg {
     B,
     Scale,  // could be removed when expressions are added
     Count,
+    X,
+    Y,
     // Add H/S/V, speed/decay
 }
 
