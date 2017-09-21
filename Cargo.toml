@@ -12,3 +12,4 @@ pistoncore-glutin_window = "0.35.0"
 piston2d-opengl_graphics = { git = "https://github.com/danslocombe/opengl_graphics" }
 rand = "0.3"
 cgmath = "0.12"
+nom = "^3.2"

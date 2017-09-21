@@ -5,7 +5,7 @@ extern crate opengl_graphics;
 
 use std::sync::mpsc::Receiver;
 
-use common::GraphicsPacket;
+use common::{GArg, GraphicsPacket};
 use self::glutin_window::GlutinWindow as Window;
 use self::opengl_graphics::{Colored, GlGraphics, OpenGL, Textured};
 use self::piston::event_loop::*;
@@ -13,7 +13,7 @@ use self::piston::window::WindowSettings;
 use self::piston::input::*;
 use std::time::{Duration, SystemTime};
 
-mod geom_visuals;
+pub mod geom_visuals;
 
 use self::geom_visuals::*;
 
@@ -31,14 +31,14 @@ fn color_from_val(x : f64) -> Color {
 }
 
 // trait for visualising a single effect
-trait Visualization {
-    fn update(&mut self, args: &[f64], args_time: Duration);
+pub trait Visualization: Send {
+    fn update(&mut self, args: &[(GArg, f64)], args_time: Duration);
     fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs);
 }
 
 pub struct ActiveEffects {
-    effects: Vec<Box<Visualization>>,
-    // background?
+    pub effects: Vec<Box<Visualization>>,
+    // TODO: background
 }
 
 impl ActiveEffects {
@@ -48,10 +48,6 @@ impl ActiveEffects {
             None => (vec![Vec::new();self.effects.len()], Duration::new(0,0))
         };
     
-        //let effect_args = latest_packet.effect_args;
-
-        //let ref mut effects = self.effects;
-    
         for (i, e) in self.effects.iter_mut().enumerate() {
             e.update(&effect_args[i], packet_time);
         }
@@ -60,20 +56,19 @@ impl ActiveEffects {
     fn render_all(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
         use graphics::graphics::clear;
 
-        // For some reason this is bugging out I think?
-        // I don't know, you get multiple rings and it looks really cool
-        // (but you shouldn't)
+        // draw background
         gl_graphics.draw(args.viewport(), |_, gl| {
             clear(BLACK, gl);
         });
 
+        // draw effects in order
         for e in self.effects.iter() {
             e.render(fps, gl_graphics, args);
         }
     }
 }
 
-pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>) {
+pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>, effects: ActiveEffects) {
     // Try a different version if this doesn't work
     let opengl = OpenGL::V3_3;
 
@@ -89,18 +84,9 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>) {
 
     let mut gl_graphics = GlGraphics::from_colored_textured(c, t);
 
-    //let mut visuals = CircleVisuals::new(start_time);
-    let mut visuals: Vec<Box<Visualization>> = Vec::new();
     let mut prev_time = SystemTime::now();
 
-    //visuals- later on, this will init in the interpreter
-    let c_white = CircleVisuals::new(start_time, WHITE, 1.0);
-    visuals.push(Box::new(c_white));
-    let c_red = DotsVisuals::new(RED, 8, 1.0);
-    visuals.push(Box::new(c_red));
-
-    let mut ae = ActiveEffects { effects: visuals };
-
+    let mut ae = effects;
 
     let mut events = Events::new(EventSettings::new());
     while let Some(e) = events.next(&mut window) {

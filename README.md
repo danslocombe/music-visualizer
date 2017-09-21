@@ -1,63 +1,48 @@
 # music-visualizer
 
-### Flow:
+## About
+This is a programmable music visualizer written in Rust. You can write a script to map audio input to visual output for your viewing pleasure.
 
-Audio in (.wav/.mp3/...) ->
-
-Audio extractor: generates raw data (amplitude, freq) ->
-
-Audio processor: dispatches processing modules which generate high-level data (amp threshold, freq band etc.) ->
-
-Mapper: redirect to video processors. repackage data. ->
-
-Video processor: dispatches rendering modules which render effects to window (circles, ripples, bars etc.) ->
-
-Video output: (post processing?) final output ->
-
-### Script Ideas:
-
-~~~~
-// set base to render upon
-// background: BackGround(Param: AudioEffect, ...)
-
-background: Plain(Color: black)
-
-// or...
-
-background: Plain(Color: red)
-
-// or even...
-
-background: Plain(Color: HighFrequency) // this could be more complex...!
-
-// more...
-
-background: ChangingColor(Change: MidFrequency) // dynamic backgrounds...
+It uses a number of external crates, notably Piston for graphical output. 
 
 
-// then effects, map audio -> video:
-// VideoEffect(Param: AudioEffect, ...)
+## Scripts
+Writing a script is easy. You can find an example script in the /examples folder.
 
-DansCircles(Radius: AmplitudeThreshold) // other parameters are set to default...
+Graphical **effects** are written as follows:
 
-// or...
+```
+effect(Argument = Value, ...)
+```
 
-DansCircles(Radius: AmplitudeThreshold, Color: white) // alternative to "white": raw color? [1.0, 1.0, 1.0]
-
-// or...
-
-DansCircles(Radius: AmplitudeThreshold, Color: LowFrequency)
-
-// or with expressions...
-
-DansCircles(Radius: Amplitude * Amplitude)
+You can then map the inputs to the effect to either audio components, or constant values. You can have as many effects as you like. You can also write the arguments for the effects in any order, but they need to be named - they also have default values, so you don't have to specify them all.
 
 
-// so final program idea:
+## Current Feature List
+#### September 21, 2017
 
-background: Plain(HighFrequency)
+### File Types
+MP3 & WAV
 
-DansCircles(Radius: AmplitudeThreshold, Color: white)
+### Effects & Arguments
+* circles(Size, Scale, R, G, B)
+* dots(Size, Scale, R, G, B, Count)
 
-Squares(Length: Amplitude * Amplitude, Color: 1.0 - HighFrequency) // with 1.0 as max (could make things hideous)
-~~~~
+### Audio Components
+* Impulse (Level above a threshold)
+* Level (Average level)
+
+### Scripting support
+* Effects.
+* Audio outputs.
+* Constants.
+
+
+## Planned
+* Actually playing music - with controls.
+* Expressions in the script.
+* Frequency components from audio.
+* Normalise audio data, and sync more with graphics.
+* Add backgrounds/post processing effects.
+* Add better ways of dealing with colour (HSV).
+* More graphic effects!
