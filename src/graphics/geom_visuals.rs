@@ -83,10 +83,10 @@ pub struct CircleVisuals {
 }
 
 impl CircleVisuals {
-    pub fn new(start_time: SystemTime) -> Self {
+    pub fn new() -> Self {
         let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Scale,1.0];
         CircleVisuals {
-            start_time : start_time,
+            start_time : SystemTime::now(),
             since_last : 0,
             last_trigger : Duration::new(0, 0),
             on : false,
@@ -94,8 +94,8 @@ impl CircleVisuals {
         }
     }
 
-    pub fn newv(start_time: SystemTime, vars: &[(GArg, f64)]) -> Self {
-        let mut v = Self::new(start_time);
+    pub fn newv(vars: &[(GArg, f64)]) -> Self {
+        let mut v = Self::new();
         for &(ref a,ref f) in vars {
             v.vars.insert(a.clone(),f.clone());
         };

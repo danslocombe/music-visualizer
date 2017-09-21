@@ -11,6 +11,14 @@ pub enum AudioType {
     // and many more
 }
 
+// used to select between different audio input types
+#[derive(Clone,Debug)]
+pub enum AudioOption {
+    Const(f64),
+    Var(AudioType)
+    // TODO: expressions
+}
+
 // variable arguments for visualizers
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum GArg {
@@ -18,8 +26,9 @@ pub enum GArg {
     R,
     G,
     B,
-    Scale,
+    Scale,  // could be removed when expressions are added
     Count,
+    // Add H/S/V, speed/decay
 }
 
 // packets of data passed between threads

@@ -3,13 +3,6 @@ use std::sync::mpsc::{Receiver, Sender};
 // use interpret
 use common::*;
 
-// used to select between constant and variable opts
-#[derive(Clone,Debug)]
-pub enum AudioOption {
-    Const(f64),
-    Var(AudioType)
-}
-
 // used to map inputs to a single graphic object
 pub struct Mapper {
     pub input_audio: Vec<(AudioOption, GArg)>,
