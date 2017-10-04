@@ -31,12 +31,12 @@ named!(p_visualizer<&[u8], (Box<Visualization>,Mapper)>,
     do_parse!(
         vis: alpha              >>
         opt!(multispace)        >>
-        tag!("(")               >>
+        tag!("{")               >>
         opt!(multispace)        >>
         args: opt!(p_arg_list)  >>
         final_arg: opt!(p_arg)  >>
         opt!(multispace)        >>
-        tag!(")")               >>
+        tag!("}")               >>
         (output_visualizer(vis, args, final_arg))
     )
 );

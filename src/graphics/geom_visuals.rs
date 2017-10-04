@@ -151,12 +151,12 @@ impl Visualization for CircleVisuals {
 
         let last_size = arg(&self.vars,GArg::Size);
 
-        for &(ref a,ref v) in args.iter() {
-            self.vars.insert(a.clone(),v.clone());
+        for (a, v) in args.iter().cloned() {
+            self.vars.insert(a,v);
         }
 
         if (arg(&self.vars,GArg::Size) > 0.0) {
-            self.since_last = 0;
+            self.since_last = 1;
             self.last_trigger = args_time;
         }
         else {
@@ -254,6 +254,60 @@ impl Visualization for DotsVisuals {
         self.angle += arg(&self.vars,GArg::Size) * 0.04;
         if (self.angle > TWO_PI) {
             self.angle -= TWO_PI;
+        }
+    }
+}
+
+//struct 
+pub struct RectangleVisuals {
+    since_last : usize,
+    size_prev : f64,
+    vars : HashMap<GArg, f64>
+}
+
+impl RectangleVisuals {
+    pub fn new() -> Self {
+        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Scale,1.0;
+                             GArg::X,0.0;GArg::Y,1.0];
+        RectangleVisuals {
+            since_last: 0,
+            size_prev: 0.0,
+            vars: vars
+        }
+    }
+}
+
+impl Visualization for RectangleVisuals {
+    fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
+        use graphics::*;
+        use graphics::graphics::Transformed;
+
+        gl_graphics.draw(args.viewport(), |c, gl| {
+            let color = cons_color(&self.vars);
+
+            let rect_width = (args.width / 10) as f64;
+            let rect_height = arg(&self.vars,GArg::Size)/* * ((args.height / 2) as f64)*/;
+
+            let x = arg(&self.vars,GArg::X) * (args.width as f64) + rect_width;
+            let y = arg(&self.vars,GArg::Y) * (args.height as f64);
+
+            let transform = c.transform.trans(x, y)
+                                       .rot_deg(180.0)
+                                       .scale(1.0, rect_height);
+
+            let shape = graphics::rectangle::square(0.0, 0.0, rect_width);
+
+            graphics::rectangle(color, shape, transform, gl);
+        });
+    }
+
+    fn update(&mut self, args: &[(GArg, f64)], args_time: Duration) {
+        self.since_last = self.since_last + 1;
+
+        self.size_prev = arg(&self.vars,GArg::Size);
+        
+        for &(ref a,ref v) in args.iter() {
+            self.vars.insert(a.clone(),v.clone());
         }
     }
 }

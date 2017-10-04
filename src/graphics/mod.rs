@@ -53,7 +53,7 @@ impl ActiveEffects {
         }
     }
 
-    fn render_all(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
+    fn render_all(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs, window: &mut Window) {
         use graphics::graphics::clear;
 
         // draw background
@@ -65,6 +65,17 @@ impl ActiveEffects {
         for e in self.effects.iter() {
             e.render(fps, gl_graphics, args);
         }
+
+        /*let texture = Texture::from_image(
+            &mut window.factory,
+            & [image]
+            &TextureSettings::new()
+        ).unwrap();;
+
+        window.draw_2d(&e, |c, gl| {
+            clear(BLACK, gl);
+            image(&texture, c.transform, gl);
+        });*/
     }
 }
 
@@ -72,7 +83,7 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>, effects: Acti
     // Try a different version if this doesn't work
     let opengl = OpenGL::V3_3;
 
-    let mut window : Window = WindowSettings::new("Simon", [800, 600])
+    let mut window : Window = WindowSettings::new("Audisuals", [800, 600])
         .opengl(opengl)
         .vsync(true)
         .exit_on_esc(true)
@@ -96,9 +107,9 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>, effects: Acti
                 // Calculate fps
                 let dt = prev_time.elapsed().unwrap();
                 prev_time = SystemTime::now();
-                let fps = 1000_000_000.0 / (dt.subsec_nanos() as f64);
+                let fps = 1000_000_000.0 / (dt.subsec_nanos() as f64); // TODO: is this necessary?
 
-                ae.render_all(fps, &mut gl_graphics, &r);
+                ae.render_all(fps, &mut gl_graphics, &r, &mut window);
             }
             Input::Update(_) => {
 
