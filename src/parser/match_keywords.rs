@@ -1,5 +1,5 @@
 use std::str;
-use common::{AudioType, GArg, AudioOption};
+use common::{AudioType, GArg, Expr};
 
 pub fn check_garg_name(i: &[u8]) -> Result<GArg, String> {
     let identifier = str::from_utf8(i).unwrap().to_lowercase();
@@ -20,11 +20,11 @@ pub fn check_garg_name(i: &[u8]) -> Result<GArg, String> {
 }
 
 
-pub fn check_audio_name(i: &[u8]) -> Result<AudioOption, String> {
+pub fn check_audio_name(i: &[u8]) -> Result<Expr, String> {
     let identifier = str::from_utf8(i).unwrap().to_lowercase();
     match identifier.as_str() {
-        "impulse" => Ok(AudioOption::Var(AudioType::Impulse)),
-        "level" => Ok(AudioOption::Var(AudioType::Level)),
+        "impulse" => Ok(Expr::Var(AudioType::Impulse)),
+        "level" => Ok(Expr::Var(AudioType::Level)),
         x => Err(format!("Invalid audio input specified: {}", x)),
     }
 }

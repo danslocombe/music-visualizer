@@ -97,8 +97,8 @@ impl CircleVisuals {
 
     pub fn newv(vars: &[(GArg, f64)]) -> Self {
         let mut v = Self::new();
-        for &(ref a,ref f) in vars {
-            v.vars.insert(a.clone(),f.clone());
+        for (a,f) in vars.iter().cloned() {
+            v.vars.insert(a,f);
         };
         v
     }
@@ -200,8 +200,8 @@ impl DotsVisuals {
 
     pub fn newv(vars: &[(GArg, f64)]) -> Self {
         let mut v = Self::new();
-        for &(ref a,ref f) in vars.iter() {
-            v.vars.insert(a.clone(),f.clone());
+        for (a,f) in vars.iter().cloned() {
+            v.vars.insert(a,f);
         };
         v
     }
@@ -246,8 +246,8 @@ impl Visualization for DotsVisuals {
 
         self.size_prev = arg(&self.vars,GArg::Size);
 
-        for &(ref a,ref v) in args.iter() {
-            self.vars.insert(a.clone(),v.clone());
+        for (a,v) in args.iter().cloned() {
+            self.vars.insert(a,v);
         }
 
         self.angle_prev = self.angle;
@@ -306,8 +306,8 @@ impl Visualization for RectangleVisuals {
 
         self.size_prev = arg(&self.vars,GArg::Size);
         
-        for &(ref a,ref v) in args.iter() {
-            self.vars.insert(a.clone(),v.clone());
+        for (a,v) in args.iter().cloned() {
+            self.vars.insert(a,v);
         }
     }
 }

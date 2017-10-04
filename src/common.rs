@@ -12,11 +12,37 @@ pub enum AudioType {
 }
 
 // used to select between different audio input types
-#[derive(Clone,Debug)]
+/*#[derive(Clone,Debug)]
 pub enum AudioOption {
     Const(f64),
-    Var(AudioType)
+    Var(AudioType),
+    Expr(Expr)
     // TODO: expressions
+}*/
+
+
+// expressions for audio input
+#[derive(Clone,Debug)]
+pub enum Expr {
+    Const(f64),
+    Var(AudioType),
+    Add(Box<Expr>, Box<Expr>),
+    Sub(Box<Expr>, Box<Expr>),
+    Mul(Box<Expr>, Box<Expr>),
+    Div(Box<Expr>, Box<Expr>),
+}
+
+impl Expr {
+    pub fn calculate(self, vars: &HashMap<AudioType,f64>) -> f64 {
+        match self {
+            Expr::Var(v) => vars.get(&v).unwrap().clone(),
+            Expr::Const(x) => x,
+            Expr::Add(a,b) => a.calculate(&vars) + b.calculate(&vars),
+            Expr::Sub(a,b) => a.calculate(&vars) - b.calculate(&vars),
+            Expr::Mul(a,b) => a.calculate(&vars) * b.calculate(&vars),
+            Expr::Div(a,b) => a.calculate(&vars) / b.calculate(&vars),
+        }
+    }
 }
 
 // variable arguments for visualizers

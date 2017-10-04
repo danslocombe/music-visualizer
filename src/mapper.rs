@@ -3,13 +3,14 @@ use std::sync::mpsc::{Receiver, Sender};
 // use interpret
 use common::*;
 
+
 // used to map inputs to a single graphic object
 pub struct Mapper {
-    pub input_audio: Vec<(AudioOption, GArg)>,
+    pub input_audio: Vec<(Expr, GArg)>,
 }
 
 impl Mapper {
-    pub fn new(input_audio: Vec<(AudioOption, GArg)>) -> Self {
+    pub fn new(input_audio: Vec<(Expr, GArg)>) -> Self {
         Mapper {
             input_audio: input_audio,
         }
@@ -17,11 +18,9 @@ impl Mapper {
 
     fn generate(&self, inputs: &AudioPacket) -> Vec<(GArg, f64)> {
         self.input_audio.iter()
-            .map(|&(ref o,ref a)| {
-                match o {
-                    &AudioOption::Var(ref v) => (a.clone(),inputs.audio.get(&v).unwrap().clone()),
-                    &AudioOption::Const(ref x) => (a.clone(),x.clone())
-                }
+            .cloned()
+            .map(|(o, a)| {
+                (a, o.calculate(&inputs.audio))
             })
             .collect::<Vec<(GArg, f64)>>()
     }

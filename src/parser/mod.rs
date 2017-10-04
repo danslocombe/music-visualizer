@@ -7,7 +7,7 @@ use graphics::Visualization;
 use self::match_keywords::{check_garg_name, check_audio_name};
 use self::match_visualizer::new_visualizer;
 use nom::IResult;
-use nom::{multispace, alpha, double};
+use nom::{multispace, alpha, double, digit};
 
 use std::str;
 use std::fs::File;
@@ -41,7 +41,7 @@ named!(p_visualizer<&[u8], (Box<Visualization>,Mapper)>,
     )
 );
 
-named!(p_arg_list<&[u8], Vec<(AudioOption,GArg)> >,
+named!(p_arg_list<&[u8], Vec<(Expr,GArg)> >,
     do_parse!(
         list: many1!(do_parse!(
             arg: p_arg          >>
@@ -53,32 +53,114 @@ named!(p_arg_list<&[u8], Vec<(AudioOption,GArg)> >,
     )
 );
 
-named!(p_arg<&[u8], (AudioOption,GArg)>,
+named!(p_arg<&[u8], (Expr,GArg)>,
     do_parse!(
         g: p_garg_name      >>
         opt!(multispace)    >>
         tag!("=")           >>
         opt!(multispace)    >>
-        a: p_audio_name     >>
+        a: p_add_sub        >>
         (a,g)
     )
 );
 
-named!(p_audio_name<&[u8], AudioOption>,
+named!(p_add_sub<&[u8], Expr>,
     alt!(
-        p_audio_const |
-        p_audio_id
+        p_add       |
+        p_sub       |
+        p_mul_div
     )
 );
 
-named!(p_audio_const<&[u8], AudioOption>,
+named!(p_add<&[u8], Expr>,
+    do_parse!(
+        a: p_mul_div        >>
+        opt!(multispace)    >>
+        tag!("+")           >>
+        opt!(multispace)    >>
+        b: p_add_sub        >>
+        (Expr::Add(Box::new(a), Box::new(b)))
+    )
+);
+  
+named!(p_sub<&[u8], Expr>,
+    do_parse!(
+        a: p_mul_div        >>
+        opt!(multispace)    >>
+        tag!("-")           >>
+        opt!(multispace)    >>
+        b: p_add_sub        >>
+        (Expr::Sub(Box::new(a), Box::new(b)))
+    )
+);
+
+named!(p_mul_div<&[u8], Expr>,
+    alt!(
+        p_mul       |
+        p_div       |
+        p_prim_expr
+    )
+);
+
+named!(p_mul<&[u8], Expr>,
+    do_parse!(
+        a: p_prim_expr      >>
+        opt!(multispace)    >>
+        tag!("*")           >>
+        opt!(multispace)    >>
+        b: p_mul_div        >>
+        (Expr::Mul(Box::new(a), Box::new(b)))
+    )
+);
+  
+named!(p_div<&[u8], Expr>,
+    do_parse!(
+        a: p_prim_expr      >>
+        opt!(multispace)    >>
+        tag!("/")           >>
+        opt!(multispace)    >>
+        b: p_mul_div        >>
+        (Expr::Div(Box::new(a), Box::new(b)))
+    )
+);
+
+named!(p_prim_expr<&[u8], Expr>,
+    alt!(
+        p_audio_id   |
+        p_expr_const |
+        do_parse!(
+            tag!("(")           >>
+            opt!(multispace)    >>
+            e: p_add_sub        >>
+            opt!(multispace)    >>
+            tag!(")")           >>
+            (e)
+        )
+    )
+);
+
+named!(p_expr_const<&[u8], Expr>,
+    alt!(
+        p_float |
+        p_int
+    )
+);
+
+named!(p_int<&[u8], Expr>,
+    do_parse!(
+        i: digit   >>
+        (Expr::Const(str_to_int(i).unwrap() as f64))
+    )
+);
+
+named!(p_float<&[u8], Expr>,
     do_parse!(
         f: double   >>
-        (AudioOption::Const(f))
+        (Expr::Const(f))
     )
 );
 
-named!(p_audio_id<&[u8], AudioOption>,
+named!(p_audio_id<&[u8], Expr>,
     map_res!(alpha, check_audio_name)
 );
 
@@ -118,8 +200,8 @@ pub fn parse_from_string(text: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>) {
 }
 
 fn output_visualizer(vis_name: &[u8],
-                     args: Option<Vec<(AudioOption,GArg)>>,
-                     final_arg: Option<(AudioOption,GArg)>)
+                     args: Option<Vec<(Expr,GArg)>>,
+                     final_arg: Option<(Expr,GArg)>)
                      -> (Box<Visualization>, Mapper) {
     // combine arg lists
     let mut arg_list = match args {
@@ -142,4 +224,14 @@ fn output_visualizer(vis_name: &[u8],
     let vis = new_visualizer(str::from_utf8(vis_name).unwrap());
 
     (vis, map)
+}
+
+fn str_to_int(s: &[u8]) -> Result<i32, String> {
+    match str::from_utf8(s) {
+        Ok(i_str) => match i_str.parse() {
+            Ok(i) => Ok(i),
+            Err(s) => Err(format!("Not an integer: {}", i_str))
+        },
+        Err(e) => Err(format!("Incorrectly parsed input string."))
+    }
 }
