@@ -11,16 +11,6 @@ pub enum AudioType {
     // and many more
 }
 
-// used to select between different audio input types
-/*#[derive(Clone,Debug)]
-pub enum AudioOption {
-    Const(f64),
-    Var(AudioType),
-    Expr(Expr)
-    // TODO: expressions
-}*/
-
-
 // expressions for audio input
 #[derive(Clone,Debug)]
 pub enum Expr {
@@ -52,7 +42,6 @@ pub enum GArg {
     R,
     G,
     B,
-    Scale,  // could be removed when expressions are added
     Count,
     X,
     Y,

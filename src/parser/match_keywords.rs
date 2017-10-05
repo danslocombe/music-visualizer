@@ -11,7 +11,6 @@ pub fn check_garg_name(i: &[u8]) -> Result<GArg, String> {
         "green" => Ok(GArg::G),
         "b" => Ok(GArg::B),
         "blue" => Ok(GArg::B),
-        "scale" => Ok(GArg::Scale),
         "count" => Ok(GArg::Count),
         "x" => Ok(GArg::X),
         "y" => Ok(GArg::Y),

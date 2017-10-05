@@ -84,7 +84,7 @@ pub struct CircleVisuals {
 
 impl CircleVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Scale,1.0;
+        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;
                              GArg::X,0.5;GArg::Y,0.5];
         CircleVisuals {
             start_time : SystemTime::now(),
@@ -119,7 +119,7 @@ impl Visualization for CircleVisuals {
             let y_cent = (arg(&self.vars,GArg::Y) * 2.0) - 1.0;
 
             // Circle radius
-            let r_mult = arg(&self.vars,GArg::Size).abs() * arg(&self.vars,GArg::Scale).abs();
+            let r_mult = arg(&self.vars,GArg::Size).abs();
 
             let r = if self.on {
                 r_mult
@@ -187,7 +187,7 @@ pub struct DotsVisuals {
 impl DotsVisuals {
     pub fn new() -> Self {
         let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;
-                             GArg::Scale,1.0;GArg::Count,32.0;
+                             GArg::Count,32.0;
                              GArg::X,0.5;GArg::Y,0.5];
         DotsVisuals {
             since_last : 0,
@@ -222,9 +222,9 @@ impl Visualization for DotsVisuals {
             // Draw a circle of radius r
             let dots = arg(&self.vars,GArg::Count) as u32;
             for i in 0..dots {
-                let r0 = self.size_prev * arg(&self.vars,GArg::Scale);
+                let r0 = self.size_prev;
                 let theta0 = self.angle_prev + (i as f64) * TWO_PI / arg(&self.vars,GArg::Count);
-                let r1 = arg(&self.vars,GArg::Size) * arg(&self.vars,GArg::Scale);
+                let r1 = arg(&self.vars,GArg::Size);
                 let theta = self.angle + (i as f64) * TWO_PI / arg(&self.vars,GArg::Count);
             
                 let p0 = Point{
@@ -259,17 +259,17 @@ impl Visualization for DotsVisuals {
 }
 
 //struct 
-pub struct RectangleVisuals {
+pub struct BarVisuals {
     since_last : usize,
     size_prev : f64,
     vars : HashMap<GArg, f64>
 }
 
-impl RectangleVisuals {
+impl BarVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Scale,1.0;
+        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;
                              GArg::X,0.0;GArg::Y,1.0];
-        RectangleVisuals {
+        BarVisuals {
             since_last: 0,
             size_prev: 0.0,
             vars: vars
@@ -277,7 +277,7 @@ impl RectangleVisuals {
     }
 }
 
-impl Visualization for RectangleVisuals {
+impl Visualization for BarVisuals {
     fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
         use graphics::*;
         use graphics::graphics::Transformed;
