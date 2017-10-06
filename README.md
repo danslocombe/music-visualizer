@@ -50,6 +50,7 @@ MP3 & WAV
 * Normalise audio data, and sync more with graphics.
 * Add backgrounds/post processing effects.
 * Add better ways of dealing with colour (HSV).
-* Add decay controls to primitives.
+* Add decay/delay controls to primitives.
 * Adding bindings for variables and functions in the script.
+* Adding in-built functions.
 * More graphic effects!

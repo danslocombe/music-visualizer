@@ -14,29 +14,21 @@ use std::time::{Duration, SystemTime};
 use std::thread;
 use std::thread::sleep;
 use std::sync::mpsc::{Receiver, Sender, channel};
-use std::fs::File;
 use std::path::Path;
 
 use audio::run_audio;
 use common::*;
 use mapper::run as run_map;
-use parser::*;
+use parser::parse_from_file;
 use graphics::{run as run_visualizer, ActiveEffects};
-use hound::WavReader;
 
 
 fn main() {
 
-    // Load wav from first arg
-    let music_arg = match env::args().nth(1) {
-        Some(x) => x,
-        None => {println!("Usage: simon.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
-    };
-
-    // Load and parse file from second arg
-    let script_arg = match env::args().nth(2) {
-        Some(x) => x,
-        None => {println!("Usage: simon.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
+    // Load music file and script
+    let (music_arg, script_arg) = match (env::args().nth(1), env::args().nth(2)) {
+        (Some(x), Some(y)) => (x, y),
+        _ => {println!("Usage: simon.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
     };
 
     let (visuals,mappers) = parse_from_file(&script_arg);
@@ -50,12 +42,9 @@ fn main() {
         None => {::std::process::exit(1);},
     };
 
-    let countdown = env::args().nth(2).and_then(|x| {
+    let countdown = env::args().nth(3).and_then(|x| {
         x.parse::<u64>().ok()
     }).unwrap_or(7);
-
-    //let reader = WavReader::open(&arg).unwrap();
-    let sample_time = 0.25;
 
     // Create a transmitter and receiver for updates
     let (txa, rxa) : (Sender<AudioPacket>, Receiver<AudioPacket>) = channel();
@@ -63,7 +52,8 @@ fn main() {
 
     // Countdown allowing you to press play
     let countdown_dur = Duration::new(countdown, 0);
-    // Program has headstart of a quater of a second
+    // Program has headstart of a quarter of a second
+    let sample_time = 0.25;
     let headstart = Duration::from_millis((1000.0 * sample_time) as u64);
 
     let music_start_time = SystemTime::now() + countdown_dur + headstart;

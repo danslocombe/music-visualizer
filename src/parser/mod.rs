@@ -13,8 +13,6 @@ use std::str;
 use std::fs::File;
 use std::io::Read;
 
-use graphics::geom_visuals::*;
-
 // Parser macros
 
 named!(parse_script<&[u8], Vec<(Box<Visualization>,Mapper)> >,
@@ -173,12 +171,12 @@ named!(p_garg_name<&[u8], GArg>,
 pub fn parse_from_file(file_name: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>) {
     let mut input_file = File::open(file_name).unwrap();
     let mut file_contents = String::new();
-    input_file.read_to_string(&mut file_contents);
+    let _ = input_file.read_to_string(&mut file_contents);
 
     parse_from_string(file_contents.as_str())
 }
 
-pub fn parse_from_string(text: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>) {
+fn parse_from_string(text: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>) {
     let mut output = match parse_script(text.as_bytes()) {
         IResult::Done(_,o) => o,
         IResult::Incomplete(i) => panic!("Incomplete: {:?}", i),
@@ -230,8 +228,8 @@ fn str_to_int(s: &[u8]) -> Result<i32, String> {
     match str::from_utf8(s) {
         Ok(i_str) => match i_str.parse() {
             Ok(i) => Ok(i),
-            Err(s) => Err(format!("Not an integer: {}", i_str))
+            Err(_) => Err(format!("Not an integer: {}", i_str))
         },
-        Err(e) => Err(format!("Incorrectly parsed input string."))
+        Err(_) => Err(format!("Incorrectly parsed input string."))
     }
 }

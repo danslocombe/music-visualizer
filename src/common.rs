@@ -6,8 +6,9 @@ use std::collections::HashMap;
 pub enum AudioType {
     Impulse,
     Level,
-    HighFrequency,
-    LowFrequency,
+    //HighFrequency,
+    //MidFrequency,
+    //LowFrequency,
     // and many more
 }
 

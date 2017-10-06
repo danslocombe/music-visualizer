@@ -1,6 +1,6 @@
 use std::time::{Duration, SystemTime};
 use std::collections::HashMap;
-use graphics::opengl_graphics::{Colored, GlGraphics, OpenGL, Textured};
+use graphics::opengl_graphics::GlGraphics;
 use graphics::piston::input::RenderArgs;
 use graphics::{Color, Visualization};
 use common::GArg;
@@ -155,7 +155,7 @@ impl Visualization for CircleVisuals {
             self.vars.insert(a,v);
         }
 
-        if (arg(&self.vars,GArg::Size) > 0.0) {
+        if arg(&self.vars,GArg::Size) > 0.0 {
             self.since_last = 1;
             self.last_trigger = args_time;
         }
@@ -252,7 +252,7 @@ impl Visualization for DotsVisuals {
 
         self.angle_prev = self.angle;
         self.angle += arg(&self.vars,GArg::Size) * 0.04;
-        if (self.angle > TWO_PI) {
+        if self.angle > TWO_PI {
             self.angle -= TWO_PI;
         }
     }

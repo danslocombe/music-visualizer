@@ -15,14 +15,9 @@ use std::time::{Duration, SystemTime};
 
 pub mod geom_visuals;
 
-use self::geom_visuals::*;
-
 type Color = [f32; 4];
 
-const WHITE: Color = [1.0, 1.0, 1.0, 1.0];
-const RED: Color = [1.0, 0.0, 0.0, 1.0];
 const BLACK: Color = [0.0, 0.0, 0.0, 1.0];
-
 
 fn color_from_val(x : f64) -> Color {
     let y = x as f32;
