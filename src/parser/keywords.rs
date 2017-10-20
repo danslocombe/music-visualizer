@@ -5,6 +5,7 @@ pub fn check_garg_name(i: &[u8]) -> Result<GArg, String> {
     let identifier = str::from_utf8(i).unwrap().to_lowercase();
     match identifier.as_str() {
         "size" => Ok(GArg::Size),
+        "width" => Ok(GArg::Width),
         "r" => Ok(GArg::R),
         "red" => Ok(GArg::R),
         "g" => Ok(GArg::G),

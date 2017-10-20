@@ -7,6 +7,7 @@ pub fn new_visualizer(name: &str) -> Box<Visualization> {
         "circles" => Box::new(geom_visuals::CircleVisuals::new()),
         "dots" => Box::new(geom_visuals::DotsVisuals::new()),
         "bar" => Box::new(geom_visuals::BarVisuals::new()),
+        "spiky" => Box::new(geom_visuals::SpikyVisuals::new()),
         x => panic!("Visual function not recognised: {}", x)
     }
 }

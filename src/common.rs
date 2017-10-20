@@ -24,6 +24,12 @@ pub enum Expr {
     Sub(Box<Expr>, Box<Expr>),
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
+    // Functions (may move these)
+    Cond(Box<Expr>, Box<Expr>, Box<Expr>),
+    Sin(Box<Expr>),
+    Cos(Box<Expr>),
+    Floor(Box<Expr>),
+    Ceil(Box<Expr>),
 }
 
 impl Expr {
@@ -35,6 +41,16 @@ impl Expr {
             Expr::Sub(a,b) => a.calculate(&vars) - b.calculate(&vars),
             Expr::Mul(a,b) => a.calculate(&vars) * b.calculate(&vars),
             Expr::Div(a,b) => a.calculate(&vars) / b.calculate(&vars),
+            // Functions
+            Expr::Cond(c,a,b) => if c.calculate(&vars) > 0.0 {
+                                     a.calculate(&vars)
+                                 } else {
+                                     b.calculate(&vars)
+                                 },
+            Expr::Sin(x) => x.calculate(&vars).sin(),
+            Expr::Cos(x) => x.calculate(&vars).cos(),
+            Expr::Floor(x) => x.calculate(&vars).floor(),
+            Expr::Ceil(x) => x.calculate(&vars).ceil(),
         }
     }
 }
@@ -43,6 +59,7 @@ impl Expr {
 #[derive(Hash, PartialEq, Eq, Clone, Debug)]
 pub enum GArg {
     Size,
+    Width,
     R,
     G,
     B,

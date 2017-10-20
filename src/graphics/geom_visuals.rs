@@ -85,7 +85,7 @@ pub struct CircleVisuals {
 
 impl CircleVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;
+        let vars = make_map![GArg::Size,0.0;GArg::Width,1.0;
                              GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
                              GArg::X,0.5;GArg::Y,0.5];
         CircleVisuals {
@@ -143,7 +143,7 @@ impl Visualization for CircleVisuals {
                     x : (r * (TWO_PI * i1_d / prec_d).cos()) + x_cent,
                     y : (r * (TWO_PI * i1_d / prec_d).sin()) + y_cent,
                 };
-                line_points(gl, args, color, 1.0, &p1, &p2);
+                line_points(gl, args, color, arg(&self.vars,GArg::Width), &p1, &p2);
             }
         });
     }
@@ -269,7 +269,7 @@ pub struct BarVisuals {
 
 impl BarVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;
+        let vars = make_map![GArg::Size,0.0;GArg::Width,1.0;
                              GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
                              GArg::X,0.0;GArg::Y,1.0];
         BarVisuals {
@@ -288,7 +288,7 @@ impl Visualization for BarVisuals {
         gl_graphics.draw(args.viewport(), |c, gl| {
             let color = cons_color(&self.vars);
 
-            let rect_width = (args.width / 10) as f64;
+            let rect_width = ((args.width / 10 ) as f64) * arg(&self.vars,GArg::Width);
             let rect_height = arg(&self.vars,GArg::Size)/* * ((args.height / 2) as f64)*/;
 
             let x = arg(&self.vars,GArg::X) * (args.width as f64);
@@ -315,7 +315,7 @@ impl Visualization for BarVisuals {
     }
 }
 
-/*pub struct Visuals {
+pub struct SpikyVisuals {
     start_time : SystemTime,
     last_trigger : Duration,
     since_last : u32,
@@ -323,11 +323,12 @@ impl Visualization for BarVisuals {
     vars : HashMap<GArg, f64>
 }
 
-impl CircleVisuals {
+impl SpikyVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;
+        let vars = make_map![GArg::Size,0.0;
+                             GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
                              GArg::X,0.5;GArg::Y,0.5];
-        CircleVisuals {
+        SpikyVisuals {
             start_time : SystemTime::now(),
             since_last : 0,
             last_trigger : Duration::new(0, 0),
@@ -337,7 +338,7 @@ impl CircleVisuals {
     }
 }
 
-impl Visualization for CircleVisuals {
+impl Visualization for SpikyVisuals {
 
     fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
         use graphics::*;
@@ -366,9 +367,12 @@ impl Visualization for CircleVisuals {
             for i in 0..prec {
                 let i_d = i as f64;
                 let i1_d = (i + 1) as f64;
+                let variance : f64 = if i % 2 == 0 {0.0} else {
+                    0.1
+                };
                 let p1 = Point{
-                    x : (r * (TWO_PI * i_d / prec_d).cos()) + x_cent,
-                    y : (r * (TWO_PI * i_d / prec_d).sin()) + y_cent,
+                    x : (r * (TWO_PI * i_d / prec_d).cos()) + x_cent + variance,
+                    y : (r * (TWO_PI * i_d / prec_d).sin()) + y_cent + variance,
                 };
                 let p2 = Point{
                     x : (r * (TWO_PI * i1_d / prec_d).cos()) + x_cent,
@@ -407,4 +411,4 @@ impl Visualization for CircleVisuals {
             self.on = since_trigger < epilepsy_preventation_duration;
         });
     }
-}*/
+}

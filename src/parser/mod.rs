@@ -1,17 +1,51 @@
-mod match_keywords;
-mod match_visualizer;
+mod keywords;
+mod visualizers;
+mod functions;
 
 use common::*;
 use mapper::Mapper;
 use graphics::{Visualization, ActiveEffects};
-use self::match_keywords::{check_garg_name, check_audio_name};
-use self::match_visualizer::new_visualizer;
+use self::keywords::{check_garg_name, check_audio_name};
+use self::visualizers::new_visualizer;
+use self::functions::check_func;
 use nom::IResult;
 use nom::{multispace, alpha, double, digit};
 
 use std::str;
 use std::fs::File;
 use std::io::Read;
+
+
+pub fn parse_from_file(file_name: &str) -> (ActiveEffects, Vec<Mapper>) {
+    let mut input_file = File::open(file_name).unwrap();
+    let mut file_contents = String::new();
+    let _ = input_file.read_to_string(&mut file_contents);
+
+    parse_from_string(file_contents.as_str())
+}
+
+fn parse_from_string(text: &str) -> (ActiveEffects, Vec<Mapper>) {
+    let mut output = match parse_script(text.as_bytes()) {
+        IResult::Done(_,o) => o,
+        IResult::Incomplete(i) => panic!("Incomplete: {:?}", i),
+        IResult::Error(e) => panic!("Error: {:?}", e)
+    };
+
+    let mut boxes = Vec::new();
+    let mut maps = Vec::new();
+    
+    while let Some((v,m)) = output.pop() {
+        boxes.push(v);
+        maps.push(m);
+    };
+
+    boxes.reverse();
+    maps.reverse();
+
+    let effects = ActiveEffects {effects: boxes};
+
+    (effects, maps)
+}
 
 // Parser macros
 
@@ -96,13 +130,13 @@ named!(p_mul_div<&[u8], Expr>,
     alt!(
         p_mul       |
         p_div       |
-        p_prim_expr
+        p_func_expr
     )
 );
 
 named!(p_mul<&[u8], Expr>,
     do_parse!(
-        a: p_prim_expr      >>
+        a: p_func_expr      >>
         opt!(multispace)    >>
         tag!("*")           >>
         opt!(multispace)    >>
@@ -113,12 +147,19 @@ named!(p_mul<&[u8], Expr>,
   
 named!(p_div<&[u8], Expr>,
     do_parse!(
-        a: p_prim_expr      >>
+        a: p_func_expr      >>
         opt!(multispace)    >>
         tag!("/")           >>
         opt!(multispace)    >>
         b: p_mul_div        >>
         (Expr::Div(Box::new(a), Box::new(b)))
+    )
+);
+
+named!(p_func_expr<&[u8], Expr>,
+    alt!(
+        check_func  |
+        p_prim_expr
     )
 );
 
@@ -166,38 +207,6 @@ named!(p_garg_name<&[u8], GArg>,
     map_res!(alpha, check_garg_name)
 );
 
-
-
-pub fn parse_from_file(file_name: &str) -> (ActiveEffects, Vec<Mapper>) {
-    let mut input_file = File::open(file_name).unwrap();
-    let mut file_contents = String::new();
-    let _ = input_file.read_to_string(&mut file_contents);
-
-    parse_from_string(file_contents.as_str())
-}
-
-fn parse_from_string(text: &str) -> (ActiveEffects, Vec<Mapper>) {
-    let mut output = match parse_script(text.as_bytes()) {
-        IResult::Done(_,o) => o,
-        IResult::Incomplete(i) => panic!("Incomplete: {:?}", i),
-        IResult::Error(e) => panic!("Error: {:?}", e)
-    };
-
-    let mut boxes = Vec::new();
-    let mut maps = Vec::new();
-    
-    while let Some((v,m)) = output.pop() {
-        boxes.push(v);
-        maps.push(m);
-    };
-
-    boxes.reverse();
-    maps.reverse();
-
-    let effects = ActiveEffects {effects: boxes};
-
-    (effects, maps)
-}
 
 fn output_visualizer(vis_name: &[u8],
                      args: Option<Vec<(Expr,GArg)>>,
