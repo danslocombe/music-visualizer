@@ -2,7 +2,6 @@
 extern crate nom;
 
 extern crate hound;
-
 extern crate notify;
 
 mod audio;
@@ -33,13 +32,16 @@ fn main() {
         (Some(x), Some(y)) => (x, y),
         _ => {println!("Usage: audisuals.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
     };
+    
+    //let mut script_path = env::current_dir().unwrap();
+    //script_path.push(&script_arg);
 
     let (visuals,mappers) = parse_from_file(&script_arg);
 
-    let path = Path::new(&music_arg);
+    let song_path = Path::new(&music_arg);
 
     let music_start_time = SystemTime::now();
-    let song = match audio::make_song(&path, music_start_time) {
+    let song = match audio::make_song(&song_path, music_start_time) {
         Some(x) => x,
         None => {::std::process::exit(1);},
     };
@@ -69,31 +71,7 @@ fn main() {
 
     // set up watcher for file refresh
     thread::spawn(move || {
-        let (txf, rxf) = channel();
-
-        let mut watcher: RecommendedWatcher = Watcher::new(txf, Duration::from_millis(1)).unwrap();
-
-        let mut w_path = env::current_dir().unwrap();
-        w_path.push(&script_arg);
-
-        watcher.watch(w_path, RecursiveMode::NonRecursive).unwrap();
-
-        loop {
-            match rxf.recv() {
-                Ok(event) => match event {
-                    DebouncedEvent::Write(_) => {
-                        let (new_visuals, new_mappers) = parse_from_file(&script_arg);
-                        let update = AudioPacket::Refresh(DeviceStructs{mappers: new_mappers, visuals: new_visuals});
-                        parser_txa.send(update);
-                    },
-                    _ => {}
-                },
-                Err(e) => {
-                    println!("Watch error: {:?}", e);
-                    break;
-                }
-            }
-        }
+        watch_script(script_arg.as_str(), parser_txa);
     });
 
     // Start the graphics
@@ -117,5 +95,33 @@ fn main() {
 
     // start the audio analysis
     run_audio(song, txa, sample_time, music_start_time);
+}
 
+// watches the script for changes.
+fn watch_script(script_path: &str, txa: Sender<AudioPacket>) {
+    let (txf, rxf) = channel();
+
+    let mut watcher: RecommendedWatcher = Watcher::new(txf, Duration::from_millis(1)).unwrap();
+
+    watcher.watch(&script_path, RecursiveMode::NonRecursive).unwrap();
+
+    loop {
+        match rxf.recv() {
+            Ok(event) => match event {
+                DebouncedEvent::Write(_) => {
+                    let (new_visuals, new_mappers) = parse_from_file(&script_path);
+                    let update = AudioPacket::Refresh(DeviceStructs {
+                        mappers: new_mappers,
+                        visuals: new_visuals
+                    });
+                    txa.send(update).unwrap();
+                },
+                _ => {}
+            },
+            Err(e) => {
+                println!("Watch error: {:?}", e);
+                break;
+            }
+        }
+    }
 }

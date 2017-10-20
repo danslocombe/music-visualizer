@@ -21,17 +21,18 @@ effect{Argument = Expr, ...}
 
 You can then map the inputs to the effect to Expressions. Expressions support simple arithmetic using Audio Components and constant values. You can have as many effects as you like. You can also write the arguments for the effects in any order, but they need to be named - they also have default values, so you don't have to specify them all.
 
+Something else you can do is **edit in real time**. Write a script and save it while running the visualiser and it will update automatically. Note this may not work with all text editors: it works with mousepad but not with vim!
 
 ## Current Feature List
-#### October 4, 2017
+#### October 20, 2017
 
 ### File Types
 MP3 & WAV
 
 ### Effects & Arguments
-* circles(Size, R, G, B, X, Y)
-* dots(Size, R, G, B, Count, X, Y)
-* bar(Size, R, G, B, X, Y)
+* circles{Size, R, G, B, X, Y}
+* dots{Size, R, G, B, Count, X, Y}
+* bar{Size, R, G, B, X, Y}
 
 ### Audio Components
 * Impulse (Level above a threshold)
@@ -50,6 +51,7 @@ MP3 & WAV
 * Normalise audio data, and sync more with graphics.
 * Add backgrounds/post processing effects.
 * Add better ways of dealing with colour (HSV).
+* Add transparency controls.
 * Add decay/delay controls to primitives.
 * Adding bindings for variables and functions in the script.
 * Adding in-built functions.
