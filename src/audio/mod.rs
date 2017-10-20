@@ -5,7 +5,7 @@ use std::thread::sleep;
 use std::sync::mpsc::Sender;
 use std::path::Path;
 use std::fs::File;
-use common::{AudioType, AudioPacket};
+use common::{AudioType, AudioPacket, AudioUpdate};
 use hound::{Sample, WavReader};
 
 pub mod mp3;
@@ -127,9 +127,9 @@ impl AudioProcessor {
                     let i = 5.0 * self.window.std_dev() / (self.sample_max as f64);
                     //let level = x as f64 / (sample_max as f64);
                     audio_map.insert(AudioType::Level, i);
-                    let update = AudioPacket {
+                    let update = AudioPacket::Update(AudioUpdate {
                         time : time,
-                        audio : audio_map};
+                        audio : audio_map});
                     try_send_update(&self.tx, update);
                 },
                 None => {

@@ -288,11 +288,11 @@ impl Visualization for BarVisuals {
             let rect_width = (args.width / 10) as f64;
             let rect_height = arg(&self.vars,GArg::Size)/* * ((args.height / 2) as f64)*/;
 
-            let x = arg(&self.vars,GArg::X) * (args.width as f64) + rect_width;
+            let x = arg(&self.vars,GArg::X) * (args.width as f64);
             let y = arg(&self.vars,GArg::Y) * (args.height as f64);
 
             let transform = c.transform.trans(x, y)
-                                       .rot_deg(180.0)
+                                       .flip_v()
                                        .scale(1.0, rect_height);
 
             let shape = graphics::rectangle::square(0.0, 0.0, rect_width);

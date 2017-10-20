@@ -13,3 +13,4 @@ piston2d-opengl_graphics = { git = "https://github.com/danslocombe/opengl_graphi
 rand = "0.3"
 cgmath = "0.12"
 nom = "^3.2"
+notify = "4.0.0"

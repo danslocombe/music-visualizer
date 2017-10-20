@@ -16,7 +16,7 @@ impl Mapper {
         }
     }
 
-    fn generate(&self, inputs: &AudioPacket) -> Vec<(GArg, f64)> {
+    fn generate(&self, inputs: &AudioUpdate) -> Vec<(GArg, f64)> {
         self.input_audio.iter()
             .cloned()
             .map(|(o, a)| {
@@ -26,17 +26,27 @@ impl Mapper {
     }
 }
 
-pub fn run(audio_rx: Receiver<AudioPacket>, graphics_tx: Sender<GraphicsPacket>, mappers: &Vec<Mapper>) {
+pub fn run(audio_rx: Receiver<AudioPacket>, graphics_tx: Sender<GraphicsPacket>, init_mappers: Vec<Mapper>) {
+    let mut mappers = init_mappers;
+
     while let Ok(audio_in) = audio_rx.recv(){
+        let packet = match audio_in {
+            AudioPacket::Update(data) => {
+                let effect_args = mappers.iter()
+                                         .map(|m| m.generate(&data))
+                                         .collect::<Vec<Vec<(GArg, f64)>>>();
 
-        let effect_args = mappers.iter()
-                                 .map(|m| m.generate(&audio_in))
-                                 .collect::<Vec<Vec<(GArg, f64)>>>();
+                GraphicsPacket::Update(GraphicsUpdate {
+                    effect_args: effect_args,
+                    time: data.time
+                })
+            }
+            AudioPacket::Refresh(new_structs) => {
+                mappers = new_structs.mappers;
 
-        let packet = GraphicsPacket {
-                        effect_args: effect_args,
-                        time: audio_in.time
-                     };
+                GraphicsPacket::Refresh(new_structs.visuals)
+            }
+        };
 
         graphics_tx.send(packet).unwrap();
     }

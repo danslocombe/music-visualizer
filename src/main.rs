@@ -3,6 +3,8 @@ extern crate nom;
 
 extern crate hound;
 
+extern crate notify;
+
 mod audio;
 mod common;
 mod graphics;
@@ -22,17 +24,17 @@ use mapper::run as run_map;
 use parser::parse_from_file;
 use graphics::{run as run_visualizer, ActiveEffects};
 
+use notify::{Watcher, RecursiveMode, watcher, RecommendedWatcher, DebouncedEvent};
 
 fn main() {
 
     // Load music file and script
     let (music_arg, script_arg) = match (env::args().nth(1), env::args().nth(2)) {
         (Some(x), Some(y)) => (x, y),
-        _ => {println!("Usage: simon.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
+        _ => {println!("Usage: audisuals.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
     };
 
     let (visuals,mappers) = parse_from_file(&script_arg);
-    let effects = ActiveEffects {effects: visuals};
 
     let path = Path::new(&music_arg);
 
@@ -50,6 +52,8 @@ fn main() {
     let (txa, rxa) : (Sender<AudioPacket>, Receiver<AudioPacket>) = channel();
     let (txg, rxg) : (Sender<GraphicsPacket>, Receiver<GraphicsPacket>) = channel();
 
+    let parser_txa = txa.clone();
+
     // Countdown allowing you to press play
     let countdown_dur = Duration::new(countdown, 0);
     // Program has headstart of a quarter of a second
@@ -60,12 +64,12 @@ fn main() {
 
     // Start the graphics
     thread::spawn(move || {
-        run_visualizer(music_start_time, rxg, effects);
+        run_visualizer(music_start_time, rxg, visuals);
     });
 
     // Start the mapper
     thread::spawn(move || {
-        run_map(rxa, txg, &mappers);
+        run_map(rxa, txg, mappers);
     });
 
     thread::spawn(move || {
@@ -81,5 +85,32 @@ fn main() {
     // Doesn't sleep for headstart duration, but sleeps for countdown
     sleep(countdown_dur);
 
-    run_audio(song, txa, sample_time, music_start_time);
+    // start the audio analysis
+    thread::spawn(move || {
+        run_audio(song, txa, sample_time, music_start_time);
+    });
+
+    // set up watcher for file refresh
+    let (txf, rxf) = channel();
+
+    let mut watcher: RecommendedWatcher = Watcher::new(txf, Duration::from_secs(2)).unwrap();
+
+    watcher.watch(Path::new(&script_arg), RecursiveMode::NonRecursive).unwrap();
+
+    loop {
+        match rxf.recv() {
+            Ok(event) => match event {
+                DebouncedEvent::NoticeWrite(_) | DebouncedEvent::Write(_) => {
+                    let (new_visuals, new_mappers) = parse_from_file(&script_arg);
+                    let update = AudioPacket::Refresh(DeviceStructs{mappers: new_mappers, visuals: new_visuals});
+                    parser_txa.send(update);
+                }
+                _ => {}
+            },
+            Err(e) => {
+                println!("Watch error: {:?}", e);
+                break;
+            }
+        }
+    }
 }

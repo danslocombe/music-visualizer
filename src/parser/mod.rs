@@ -3,7 +3,7 @@ mod match_visualizer;
 
 use common::*;
 use mapper::Mapper;
-use graphics::Visualization;
+use graphics::{Visualization, ActiveEffects};
 use self::match_keywords::{check_garg_name, check_audio_name};
 use self::match_visualizer::new_visualizer;
 use nom::IResult;
@@ -168,7 +168,7 @@ named!(p_garg_name<&[u8], GArg>,
 
 
 
-pub fn parse_from_file(file_name: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>) {
+pub fn parse_from_file(file_name: &str) -> (ActiveEffects, Vec<Mapper>) {
     let mut input_file = File::open(file_name).unwrap();
     let mut file_contents = String::new();
     let _ = input_file.read_to_string(&mut file_contents);
@@ -176,7 +176,7 @@ pub fn parse_from_file(file_name: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>
     parse_from_string(file_contents.as_str())
 }
 
-fn parse_from_string(text: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>) {
+fn parse_from_string(text: &str) -> (ActiveEffects, Vec<Mapper>) {
     let mut output = match parse_script(text.as_bytes()) {
         IResult::Done(_,o) => o,
         IResult::Incomplete(i) => panic!("Incomplete: {:?}", i),
@@ -194,7 +194,9 @@ fn parse_from_string(text: &str) -> (Vec<Box<Visualization>>, Vec<Mapper>) {
     boxes.reverse();
     maps.reverse();
 
-    (boxes, maps)
+    let effects = ActiveEffects {effects: boxes};
+
+    (effects, maps)
 }
 
 fn output_visualizer(vis_name: &[u8],

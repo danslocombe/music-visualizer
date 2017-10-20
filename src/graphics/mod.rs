@@ -5,7 +5,7 @@ extern crate opengl_graphics;
 
 use std::sync::mpsc::Receiver;
 
-use common::{GArg, GraphicsPacket};
+use common::{GArg, GraphicsPacket, GraphicsUpdate};
 use self::glutin_window::GlutinWindow as Window;
 use self::opengl_graphics::{Colored, GlGraphics, OpenGL, Textured};
 use self::piston::event_loop::*;
@@ -37,11 +37,13 @@ pub struct ActiveEffects {
 }
 
 impl ActiveEffects {
-    fn update_all(&mut self, mut update_buffer: Vec<GraphicsPacket>) {
-        let (effect_args, packet_time) = match update_buffer.pop() {
+    fn update_all(&mut self, update: GraphicsUpdate) {
+        /*let (effect_args, packet_time) = match update_buffer.pop() {
             Some(p) => (p.effect_args, p.time),
             None => (vec![Vec::new();self.effects.len()], Duration::new(0,0))
-        };
+        };*/
+
+        let (effect_args, packet_time) = (update.effect_args, update.time);
     
         for (i, e) in self.effects.iter_mut().enumerate() {
             e.update(&effect_args[i], packet_time);
@@ -111,7 +113,13 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>, effects: Acti
                 // Get all the pending updates from the receiver and buffer into list
                 let update_buffer = rx.try_iter().collect::<Vec<GraphicsPacket>>();
 
-                ae.update_all(update_buffer);
+                match update_buffer.pop() {
+                    Some(GraphicsPacket::Update(update)) => ae.update_all(update),
+                    Some(GraphicsPacket::Refresh(effects)) => ae = effects,
+                    None => ae.update_all(GraphicsUpdate::new_empty(ae.effects.len())),
+                }
+
+                //ae.update_all(update_buffer);
             }
             Input::Press(i) => {
                 // Ignore for now
