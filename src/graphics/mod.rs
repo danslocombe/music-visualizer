@@ -111,12 +111,15 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>, effects: Acti
             Input::Update(_) => {
 
                 // Get all the pending updates from the receiver and buffer into list
-                let update_buffer = rx.try_iter().collect::<Vec<GraphicsPacket>>();
+                let mut update_buffer = rx.try_iter().collect::<Vec<GraphicsPacket>>();
 
                 match update_buffer.pop() {
                     Some(GraphicsPacket::Update(update)) => ae.update_all(update),
                     Some(GraphicsPacket::Refresh(effects)) => ae = effects,
-                    None => ae.update_all(GraphicsUpdate::new_empty(ae.effects.len())),
+                    None => {
+                        let len = ae.effects.len();
+                        ae.update_all(GraphicsUpdate::new_empty(len))
+                    },
                 }
 
                 //ae.update_all(update_buffer);

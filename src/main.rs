@@ -22,9 +22,9 @@ use audio::run_audio;
 use common::*;
 use mapper::run as run_map;
 use parser::parse_from_file;
-use graphics::{run as run_visualizer, ActiveEffects};
+use graphics::run as run_visualizer;
 
-use notify::{Watcher, RecursiveMode, watcher, RecommendedWatcher, DebouncedEvent};
+use notify::{Watcher, RecursiveMode, RecommendedWatcher, DebouncedEvent};
 
 fn main() {
 
@@ -62,16 +62,46 @@ fn main() {
 
     let music_start_time = SystemTime::now() + countdown_dur + headstart;
 
-    // Start the graphics
-    thread::spawn(move || {
-        run_visualizer(music_start_time, rxg, visuals);
-    });
-
     // Start the mapper
     thread::spawn(move || {
         run_map(rxa, txg, mappers);
     });
 
+    // set up watcher for file refresh
+    thread::spawn(move || {
+        let (txf, rxf) = channel();
+
+        let mut watcher: RecommendedWatcher = Watcher::new(txf, Duration::from_millis(1)).unwrap();
+
+        let mut w_path = env::current_dir().unwrap();
+        w_path.push(&script_arg);
+
+        watcher.watch(w_path, RecursiveMode::NonRecursive).unwrap();
+
+        loop {
+            match rxf.recv() {
+                Ok(event) => match event {
+                    DebouncedEvent::Write(_) => {
+                        let (new_visuals, new_mappers) = parse_from_file(&script_arg);
+                        let update = AudioPacket::Refresh(DeviceStructs{mappers: new_mappers, visuals: new_visuals});
+                        parser_txa.send(update);
+                    },
+                    _ => {}
+                },
+                Err(e) => {
+                    println!("Watch error: {:?}", e);
+                    break;
+                }
+            }
+        }
+    });
+
+    // Start the graphics
+    thread::spawn(move || {
+        run_visualizer(music_start_time, rxg, visuals);
+    });
+
+    // countdown...
     thread::spawn(move || {
         sleep(headstart);
         for i in 0..countdown {
@@ -86,31 +116,6 @@ fn main() {
     sleep(countdown_dur);
 
     // start the audio analysis
-    thread::spawn(move || {
-        run_audio(song, txa, sample_time, music_start_time);
-    });
+    run_audio(song, txa, sample_time, music_start_time);
 
-    // set up watcher for file refresh
-    let (txf, rxf) = channel();
-
-    let mut watcher: RecommendedWatcher = Watcher::new(txf, Duration::from_secs(2)).unwrap();
-
-    watcher.watch(Path::new(&script_arg), RecursiveMode::NonRecursive).unwrap();
-
-    loop {
-        match rxf.recv() {
-            Ok(event) => match event {
-                DebouncedEvent::NoticeWrite(_) | DebouncedEvent::Write(_) => {
-                    let (new_visuals, new_mappers) = parse_from_file(&script_arg);
-                    let update = AudioPacket::Refresh(DeviceStructs{mappers: new_mappers, visuals: new_visuals});
-                    parser_txa.send(update);
-                }
-                _ => {}
-            },
-            Err(e) => {
-                println!("Watch error: {:?}", e);
-                break;
-            }
-        }
-    }
 }
