@@ -30,9 +30,9 @@ Something else you can do is **edit in real time**. Write a script and save it w
 MP3 & WAV
 
 ### Effects & Arguments
-* circles{Size, R, G, B, X, Y}
-* dots{Size, R, G, B, Count, X, Y}
-* bar{Size, R, G, B, X, Y}
+* circles{Size, R[ed], G[reen], B[lue], Trans[parency], X, Y}
+* dots{Size, R, G, B, Trans, Count, X, Y}
+* bar{Size, R, G, B, Trans, X, Y}
 
 ### Audio Components
 * Impulse (Level above a threshold)
@@ -56,3 +56,10 @@ MP3 & WAV
 * Adding bindings for variables and functions in the script.
 * Adding in-built functions.
 * More graphic effects!
+
+
+## Bugs/Issues
+* Window doesn't scale properly.
+* Some instability when script refreshes.
+* Script parser is not very verbose.
+* Inconsistencies in co-ords of effects.

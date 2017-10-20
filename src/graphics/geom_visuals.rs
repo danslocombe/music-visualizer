@@ -66,7 +66,8 @@ fn cons_color(vars: &HashMap<GArg, f64>) -> Color {
     let r = vars.get(&GArg::R).unwrap().clone();
     let g = vars.get(&GArg::G).unwrap().clone();
     let b = vars.get(&GArg::B).unwrap().clone();
-    [r as f32, g as f32, b as f32, 1.0]
+    let transparency = vars.get(&GArg::Trans).unwrap().clone();
+    [r as f32, g as f32, b as f32, transparency as f32]
 }
 
 #[inline]
@@ -84,7 +85,8 @@ pub struct CircleVisuals {
 
 impl CircleVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;
+        let vars = make_map![GArg::Size,0.0;
+                             GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
                              GArg::X,0.5;GArg::Y,0.5];
         CircleVisuals {
             start_time : SystemTime::now(),
@@ -186,8 +188,8 @@ pub struct DotsVisuals {
 
 impl DotsVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;
-                             GArg::Count,32.0;
+        let vars = make_map![GArg::Size,0.0;GArg::Count,32.0;
+                             GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
                              GArg::X,0.5;GArg::Y,0.5];
         DotsVisuals {
             since_last : 0,
@@ -267,7 +269,8 @@ pub struct BarVisuals {
 
 impl BarVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;
+        let vars = make_map![GArg::Size,0.0;
+                             GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
                              GArg::X,0.0;GArg::Y,1.0];
         BarVisuals {
             since_last: 0,
@@ -311,3 +314,97 @@ impl Visualization for BarVisuals {
         }
     }
 }
+
+/*pub struct Visuals {
+    start_time : SystemTime,
+    last_trigger : Duration,
+    since_last : u32,
+    on : bool,
+    vars : HashMap<GArg, f64>
+}
+
+impl CircleVisuals {
+    pub fn new() -> Self {
+        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;
+                             GArg::X,0.5;GArg::Y,0.5];
+        CircleVisuals {
+            start_time : SystemTime::now(),
+            since_last : 0,
+            last_trigger : Duration::new(0, 0),
+            on : false,
+            vars : vars
+        }
+    }
+}
+
+impl Visualization for CircleVisuals {
+
+    fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
+        use graphics::*;
+
+        gl_graphics.draw(args.viewport(), |_, gl| {
+            // Circle precision
+            let prec : i32 = 32;
+            let prec_d = prec as f64;
+
+            // Circle centre
+            let x_cent = (arg(&self.vars,GArg::X) * 2.0) - 1.0;
+            let y_cent = (arg(&self.vars,GArg::Y) * 2.0) - 1.0;
+
+            // Circle radius
+            let r_mult = arg(&self.vars,GArg::Size).abs();
+
+            let r = if self.on {
+                r_mult
+            }
+            else {
+                r_mult / (self.since_last as f64)
+            } * 2.0;
+
+            let color = cons_color(&self.vars);
+            // Draw a circle of radius r
+            for i in 0..prec {
+                let i_d = i as f64;
+                let i1_d = (i + 1) as f64;
+                let p1 = Point{
+                    x : (r * (TWO_PI * i_d / prec_d).cos()) + x_cent,
+                    y : (r * (TWO_PI * i_d / prec_d).sin()) + y_cent,
+                };
+                let p2 = Point{
+                    x : (r * (TWO_PI * i1_d / prec_d).cos()) + x_cent,
+                    y : (r * (TWO_PI * i1_d / prec_d).sin()) + y_cent,
+                };
+                line_points(gl, args, color, 1.0, &p1, &p2);
+            }
+        });
+    }
+
+    fn update(&mut self, args: &[(GArg, f64)], args_time: Duration) {
+        self.since_last = self.since_last + 1;
+
+        let last_size = arg(&self.vars,GArg::Size);
+
+        for (a, v) in args.iter().cloned() {
+            self.vars.insert(a,v);
+        }
+
+        if arg(&self.vars,GArg::Size) > 0.0 {
+            self.since_last = 1;
+            self.last_trigger = args_time;
+        }
+        else {
+            self.vars.insert(GArg::Size,last_size);
+        }
+
+        // Only update if song is playing
+        let _ = self.start_time.elapsed().map(|current_time| {
+
+            // 50 milliseconds
+            let epilepsy_preventation_duration = Duration::new(0, 50_000_000);
+
+            let since_trigger = diff_durs(&current_time, &self.last_trigger);
+
+            self.on = since_trigger < epilepsy_preventation_duration;
+        });
+    }
+}*/

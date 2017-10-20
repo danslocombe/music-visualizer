@@ -46,6 +46,7 @@ pub enum GArg {
     R,
     G,
     B,
+    Trans,
     Count,
     X,
     Y,
