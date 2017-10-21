@@ -13,17 +13,11 @@ use self::piston::window::WindowSettings;
 use self::piston::input::*;
 use std::time::{Duration, SystemTime};
 
+#[macro_use]
+mod common;
 pub mod geom_visuals;
+pub mod backgrounds;
 
-type Color = [f32; 4];
-
-const BLACK: Color = [0.0, 0.0, 0.0, 1.0];
-
-fn color_from_val(x : f64) -> Color {
-    let y = x as f32;
-    // Set alpha to 1
-    [y, y, y, 1.0]
-}
 
 // trait for visualising a single effect
 pub trait Visualization: Send {
@@ -31,19 +25,22 @@ pub trait Visualization: Send {
     fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs);
 }
 
+// trait for backgrounds
+pub trait Background: Send {
+    fn update(&mut self, args: &[(GArg, f64)]);
+    fn render(&self, gl_graphics : &mut GlGraphics, args: &RenderArgs);
+}
+
 pub struct ActiveEffects {
+    pub bg: Box<Background>,
     pub effects: Vec<Box<Visualization>>,
-    // TODO: background
 }
 
 impl ActiveEffects {
     fn update_all(&mut self, update: GraphicsUpdate) {
-        /*let (effect_args, packet_time) = match update_buffer.pop() {
-            Some(p) => (p.effect_args, p.time),
-            None => (vec![Vec::new();self.effects.len()], Duration::new(0,0))
-        };*/
+        let (bg_args, effect_args, packet_time) = (update.bg_args, update.effect_args, update.time);
 
-        let (effect_args, packet_time) = (update.effect_args, update.time);
+        self.bg.update(&bg_args);
     
         for (i, e) in self.effects.iter_mut().enumerate() {
             e.update(&effect_args[i], packet_time);
@@ -54,9 +51,7 @@ impl ActiveEffects {
         use graphics::graphics::clear;
 
         // draw background
-        gl_graphics.draw(args.viewport(), |_, gl| {
-            clear(BLACK, gl);
-        });
+        self.bg.render(gl_graphics, args);
 
         // draw effects in order
         for e in self.effects.iter() {

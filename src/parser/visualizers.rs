@@ -1,5 +1,15 @@
 use graphics::*;
+use graphics::backgrounds;
 use graphics::geom_visuals;
+
+pub fn new_background(name: &str) -> Box<Background> {
+    let bg = name.to_lowercase();
+    match bg.as_str() {
+        "fill" => Box::new(backgrounds::SolidColor::new()),
+        "solid" => Box::new(backgrounds::SolidColor::new()),
+        x => panic!("Background not recognised: {}", x)
+    }
+}
 
 pub fn new_visualizer(name: &str) -> Box<Visualization> {
     let vis = name.to_lowercase();

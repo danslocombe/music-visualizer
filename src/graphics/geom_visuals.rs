@@ -2,8 +2,9 @@ use std::time::{Duration, SystemTime};
 use std::collections::HashMap;
 use graphics::opengl_graphics::GlGraphics;
 use graphics::piston::input::RenderArgs;
-use graphics::{Color, Visualization};
 use common::GArg;
+use graphics::Visualization;
+use graphics::common::*;
 
 const TWO_PI : f64 = 6.282;
 
@@ -47,32 +48,6 @@ fn line_points (gl : &mut GlGraphics,
         let l = [x_start, y_start, x_end, y_end];
         graphics::line(color, width, l, transform, gl);
     });
-}
-
-macro_rules! make_map {
-    ( $($k:expr , $v:expr);* ) => {
-        {
-            let mut map = HashMap::new();
-            $(
-                map.insert($k, $v);
-            )*
-            map
-        }
-    };
-}
-
-#[inline]
-fn cons_color(vars: &HashMap<GArg, f64>) -> Color {
-    let r = vars.get(&GArg::R).unwrap().clone();
-    let g = vars.get(&GArg::G).unwrap().clone();
-    let b = vars.get(&GArg::B).unwrap().clone();
-    let transparency = vars.get(&GArg::Trans).unwrap().clone();
-    [r as f32, g as f32, b as f32, transparency as f32]
-}
-
-#[inline]
-fn arg(vars: &HashMap<GArg, f64>, arg: GArg) -> f64 {
-    vars.get(&arg).unwrap().clone()
 }
 
 pub struct CircleVisuals {

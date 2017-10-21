@@ -13,7 +13,13 @@ You'll need cargo. To get going quickly: `cargo run [audio file] [script]`.
 ## Scripts
 Writing a script is easy. You can find an example script in the /examples folder.
 
-Graphical **effects** are written as follows:
+The first thing you'll need to do is specify a **background**. This can be done as below (at the top of the script file):
+
+```
+bg: background{Argument = Expr, ...}
+```
+
+Individual graphical **effects** are written as follows:
 
 ```
 effect{Argument = Expr, ...}
@@ -27,15 +33,18 @@ Expressions can include special built-in functions. They are used as follows:
 func(arg, ...)
 ```
 
-Functions have the highest precedence. The **cond** function is quite special: it takes 3 arguments. It checks if the first argument is > 0: if it is, the second argument is returned. Else, the third argument is returned.
+Functions have the highest precedence. The **cond** function is quite special: it takes 3 arguments. It checks if the first argument is > 0: if it is, the second argument is returned. Else, the third argument is returned. Note also that unlike effects, argument names do NOT have to be specified.
 
 Something else you can do is **edit in real time**. Write a script and save it while running the visualiser and it will update automatically. Note this may not work with all text editors: it works with mousepad but not with vim!
 
 ## Current Feature List
-#### October 20, 2017
+#### October 21, 2017
 
 ### File Types
 MP3 & WAV
+
+### Backgrounds
+* fill{R, G, B}
 
 ### Effects & Arguments
 * circles{Size, Width, R[ed], G[reen], B[lue], Trans[parency], X, Y}
@@ -58,7 +67,7 @@ MP3 & WAV
 * Actually playing music - with controls.
 * Frequency components from audio.
 * Normalise audio data, and sync more with graphics.
-* Add backgrounds/post processing effects.
+* Add more backgrounds.
 * Add better ways of dealing with colour (HSV).
 * Add decay/delay controls to primitives.
 * Adding bindings for variables and functions in the script.
@@ -71,3 +80,5 @@ MP3 & WAV
 * Some instability when script refreshes.
 * Script parser is not very verbose.
 * Inconsistencies in co-ords of effects.
+* Backgrounds require a bit of clean up.
+* No good tests!

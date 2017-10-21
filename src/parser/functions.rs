@@ -1,7 +1,7 @@
 use parser::p_add_sub;
 use nom::IResult;
 use nom::multispace;
-use common::Expr;
+use expression::Expr;
 
 pub fn check_func(i: &[u8]) -> IResult<&[u8], Expr> {
     p_func(i)

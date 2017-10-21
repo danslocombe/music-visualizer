@@ -3,10 +3,11 @@ mod visualizers;
 mod functions;
 
 use common::*;
+use expression::Expr;
 use mapper::Mapper;
-use graphics::{Visualization, ActiveEffects};
+use graphics::{Visualization, Background, ActiveEffects};
 use self::keywords::{check_garg_name, check_audio_name};
-use self::visualizers::new_visualizer;
+use self::visualizers::{new_visualizer, new_background};
 use self::functions::check_func;
 use nom::IResult;
 use nom::{multispace, alpha, double, digit};
@@ -16,7 +17,7 @@ use std::fs::File;
 use std::io::Read;
 
 
-pub fn parse_from_file(file_name: &str) -> (ActiveEffects, Vec<Mapper>) {
+pub fn parse_from_file(file_name: &str) -> (ActiveEffects, Mapper, Vec<Mapper>) {
     let mut input_file = File::open(file_name).unwrap();
     let mut file_contents = String::new();
     let _ = input_file.read_to_string(&mut file_contents);
@@ -24,9 +25,9 @@ pub fn parse_from_file(file_name: &str) -> (ActiveEffects, Vec<Mapper>) {
     parse_from_string(file_contents.as_str())
 }
 
-fn parse_from_string(text: &str) -> (ActiveEffects, Vec<Mapper>) {
-    let mut output = match parse_script(text.as_bytes()) {
-        IResult::Done(_,o) => o,
+fn parse_from_string(text: &str) -> (ActiveEffects, Mapper, Vec<Mapper>) {
+    let (bg, mut vis) = match parse_script(text.as_bytes()) {
+        IResult::Done(_,(bg_o, v_o)) => (bg_o, v_o),
         IResult::Incomplete(i) => panic!("Incomplete: {:?}", i),
         IResult::Error(e) => panic!("Error: {:?}", e)
     };
@@ -34,7 +35,7 @@ fn parse_from_string(text: &str) -> (ActiveEffects, Vec<Mapper>) {
     let mut boxes = Vec::new();
     let mut maps = Vec::new();
     
-    while let Some((v,m)) = output.pop() {
+    while let Some((v,m)) = vis.pop() {
         boxes.push(v);
         maps.push(m);
     };
@@ -42,14 +43,46 @@ fn parse_from_string(text: &str) -> (ActiveEffects, Vec<Mapper>) {
     boxes.reverse();
     maps.reverse();
 
-    let effects = ActiveEffects {effects: boxes};
+    let (bg_vis, bg_map) = bg;
 
-    (effects, maps)
+    let effects = ActiveEffects {bg: bg_vis, effects: boxes};
+
+    (effects, bg_map, maps)
 }
 
 // Parser macros
 
-named!(parse_script<&[u8], Vec<(Box<Visualization>,Mapper)> >,
+named!(parse_script<&[u8], ((Box<Background>,Mapper), Vec<(Box<Visualization>,Mapper)>)>,
+    do_parse!(
+        bg: p_background    >>
+        opt!(multispace)    >>
+        vm: p_visuals       >>
+        ((bg, vm))
+    )
+);
+
+named!(p_background<&[u8], (Box<Background>,Mapper)>,
+    do_parse!(
+        alt!(
+            tag!("bg")  |
+            tag!("background")
+        )                   >>
+        opt!(multispace)    >>
+        tag!(":")           >>
+        opt!(multispace)    >>
+        bg: alpha           >>
+        opt!(multispace)    >>
+        tag!("{")           >>
+        opt!(multispace)    >>
+        args: opt!(p_arg_list)  >>
+        final_arg: opt!(p_arg)  >>
+        opt!(multispace)        >>
+        tag!("}")               >>
+        (output_background(bg, args, final_arg))
+    )
+);
+
+named!(p_visuals<&[u8], Vec<(Box<Visualization>,Mapper)> >,
     many1!(
         do_parse!(
             v: p_visualizer     >>
@@ -233,6 +266,33 @@ fn output_visualizer(vis_name: &[u8],
     let vis = new_visualizer(str::from_utf8(vis_name).unwrap());
 
     (vis, map)
+}
+
+fn output_background(bg_name: &[u8],
+                     args: Option<Vec<(Expr,GArg)>>,
+                     final_arg: Option<(Expr,GArg)>)
+                     -> (Box<Background>, Mapper) {
+    // combine arg lists
+    let mut arg_list = match args {
+        Some(l) => l,
+        None => Vec::new()
+    };
+
+    match final_arg {
+        Some(a) => arg_list.push(a),
+        None => {}
+    };
+
+    let map = Mapper::new(arg_list);
+    // optional: check args vs bg possible args
+
+    // optional: extract const args for use in constructing bg.
+    // this will mean we don't need to send them over from the mapper every time.
+
+    // construct background
+    let bg = new_background(str::from_utf8(bg_name).unwrap());
+
+    (bg, map)
 }
 
 fn str_to_int(s: &[u8]) -> Result<i32, String> {

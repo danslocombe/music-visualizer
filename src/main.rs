@@ -1,11 +1,11 @@
 #[macro_use]
 extern crate nom;
-
 extern crate hound;
 extern crate notify;
 
 mod audio;
 mod common;
+mod expression;
 mod graphics;
 mod mapper;
 mod parser;
@@ -36,7 +36,7 @@ fn main() {
     //let mut script_path = env::current_dir().unwrap();
     //script_path.push(&script_arg);
 
-    let (visuals,mappers) = parse_from_file(&script_arg);
+    let (visuals,bg_mapper,mappers) = parse_from_file(&script_arg);
 
     let song_path = Path::new(&music_arg);
 
@@ -66,7 +66,7 @@ fn main() {
 
     // Start the mapper
     thread::spawn(move || {
-        run_map(rxa, txg, mappers);
+        run_map(rxa, txg, bg_mapper, mappers);
     });
 
     // set up watcher for file refresh
@@ -109,8 +109,9 @@ fn watch_script(script_path: &str, txa: Sender<AudioPacket>) {
         match rxf.recv() {
             Ok(event) => match event {
                 DebouncedEvent::Write(_) => {
-                    let (new_visuals, new_mappers) = parse_from_file(&script_path);
+                    let (new_visuals, new_bg_mapper, new_mappers) = parse_from_file(&script_path);
                     let update = AudioPacket::Refresh(DeviceStructs {
+                        bg_mapper: new_bg_mapper,
                         mappers: new_mappers,
                         visuals: new_visuals
                     });

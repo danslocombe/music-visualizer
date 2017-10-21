@@ -1,5 +1,6 @@
 use std::str;
-use common::{AudioType, GArg, Expr};
+use common::{AudioType, GArg};
+use expression::Expr;
 
 pub fn check_garg_name(i: &[u8]) -> Result<GArg, String> {
     let identifier = str::from_utf8(i).unwrap().to_lowercase();
