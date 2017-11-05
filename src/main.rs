@@ -2,6 +2,7 @@
 extern crate nom;
 extern crate hound;
 extern crate notify;
+extern crate rodio;
 
 mod audio;
 mod common;
@@ -48,7 +49,7 @@ fn main() {
 
     let countdown = env::args().nth(3).and_then(|x| {
         x.parse::<u64>().ok()
-    }).unwrap_or(7);
+    }).unwrap_or(0);
 
     // Create a transmitter and receiver for updates
     let (txa, rxa) : (Sender<AudioPacket>, Receiver<AudioPacket>) = channel();
@@ -56,13 +57,11 @@ fn main() {
 
     let parser_txa = txa.clone();
 
-    // Countdown allowing you to press play
-    let countdown_dur = Duration::new(countdown, 0);
     // Program has headstart of a quarter of a second
     let sample_time = 0.25;
-    let headstart = Duration::from_millis((1000.0 * sample_time) as u64);
 
-    let music_start_time = SystemTime::now() + countdown_dur + headstart;
+    // TODO: is this still necessary?
+    let music_start_time = SystemTime::now();
 
     // Start the mapper
     thread::spawn(move || {
@@ -79,21 +78,7 @@ fn main() {
         run_visualizer(music_start_time, rxg, visuals);
     });
 
-    // countdown...
-    thread::spawn(move || {
-        sleep(headstart);
-        for i in 0..countdown {
-            let ii = countdown - i;
-            println!("{}", ii); 
-            sleep(Duration::new(1, 0));
-        }
-        println!("Play!"); 
-    });
-
-    // Doesn't sleep for headstart duration, but sleeps for countdown
-    sleep(countdown_dur);
-
-    // start the audio analysis
+    // start the audio analysis and playback
     run_audio(song, txa, sample_time, music_start_time);
 }
 

@@ -3,23 +3,31 @@ use std::io::Read;
 use std::time::Duration;
 use hound::{Sample, WavReader, Error};
 use audio::{Song, AudioData};
+use rodio::{Decoder, Source};
+use rodio;
+use std::io::BufReader;
+use std::fs::File;
+use std::path::{Path, PathBuf};
 
 pub struct WavSong<T : Read> {
     reader : WavReader<T>,
     current_sample : usize,
     channels : usize,
     sample_rate : u32,
+    name : PathBuf,
 }
 
 impl<T : Read> WavSong<T> {
-    pub fn new(t : T) -> Result<Self, Error> {
+    pub fn new(t : T, path: &Path) -> Result<Self, Error> {
         let reader = WavReader::new(t)?;
         let spec = reader.spec();
+        let name = path.to_path_buf();
         Ok(WavSong {
             reader : reader,
             current_sample : 0,
             channels : spec.channels as usize,
             sample_rate : spec.sample_rate,
+            name : name,
         })
     }
 }
@@ -29,6 +37,14 @@ impl<T : Read> Song for WavSong<T> {
     // for others
     fn sample_max_value(&self) -> u32 {
         1 << self.reader.spec().bits_per_sample
+    }
+
+    fn play(&self) {
+        let endpoint = rodio::get_default_endpoint().unwrap();
+        let file = File::open(self.name.clone()).unwrap();
+        let decoder = rodio::Decoder::new(BufReader::new(file)).unwrap();
+
+        rodio::play_raw(&endpoint, decoder.convert_samples());
     }
 }
 

@@ -1,0 +1,9 @@
+bg: fill{R=(Level*Level*Level)/(3),
+	 G=(Level*Level*Level)/(3),
+	 B=(Level*Level*Level)/(3)}
+
+circles{Size=Level/4, Trans=0.3}
+circles{Size=Level/3, Trans=0.5}
+circles{Size=Level/5, Trans=0.2}
+circles{Size=Impulse, Trans=0.6}
+circles{Size=Impulse*Impulse*2, Trans=0.2}

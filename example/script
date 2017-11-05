@@ -1,4 +1,4 @@
-bg: fill{}
+bg: fill{Red=Level*0.5, Blue=cond(Level - 0.35, Level/2, Level/4)}
 
 circles{Size=Impulse * 0.9, R=0.8, G=0.6, B=0}
 dots{Size=(Level / 1.5) + 0.1, R=0, G=0.7, B=0.8, Count=cond(Level - 0.4, Level * 20, 30)}

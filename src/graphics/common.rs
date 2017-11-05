@@ -9,7 +9,7 @@ fn color_from_val(x : f64) -> Color {
     [y, y, y, 1.0]
 }
 
-#[export_macro]
+#[macro_export]
 macro_rules! make_map {
     ( $($k:expr , $v:expr);* ) => {
         {

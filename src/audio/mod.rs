@@ -13,6 +13,7 @@ pub mod wav;
 
 pub trait Song : Iterator<Item=AudioData>{
     fn sample_max_value(&self) -> u32;
+    fn play(&self);
 }
 
 pub struct AudioData {
@@ -25,7 +26,7 @@ pub fn make_song(path : &Path, start_time : SystemTime) -> Option<Box<Song<Item=
         match ext.to_str().unwrap().to_lowercase().as_ref() {
             "wav" => {
                 let file = File::open(path).unwrap();
-                let wav = wav::WavSong::new(file).unwrap();
+                let wav = wav::WavSong::new(file, path).unwrap();
                 let x : Box<Song<Item=AudioData>> = Box::new(wav);
                 Some(x)
             }
@@ -36,7 +37,7 @@ pub fn make_song(path : &Path, start_time : SystemTime) -> Option<Box<Song<Item=
                 Some(x)
             }
             x => {
-                println!("Error: unknown file extension \"{}\"", x);
+                println!("Error: unsupported file extension \"{}\"", x);
                 None
             }
         }
@@ -47,7 +48,9 @@ pub fn run_audio(
     mut song : Box<Song<Item=AudioData>>,
     tx : Sender<AudioPacket>,
     sample_time : f64,
-    start_time : SystemTime) {
+    start_time : SystemTime
+    ) {
+    song.play();
 
     let sample_max = song.sample_max_value();
     let mut audio_proc = AudioProcessor::new(tx, sample_time, start_time, sample_max);
