@@ -1,10 +1,12 @@
 #[macro_use]
 extern crate nom;
-
 extern crate hound;
+extern crate notify;
+extern crate rodio;
 
 mod audio;
 mod common;
+mod expression;
 mod graphics;
 mod mapper;
 mod parser;
@@ -14,82 +16,98 @@ use std::time::{Duration, SystemTime};
 use std::thread;
 use std::thread::sleep;
 use std::sync::mpsc::{Receiver, Sender, channel};
-use std::fs::File;
 use std::path::Path;
 
 use audio::run_audio;
 use common::*;
 use mapper::run as run_map;
-use parser::*;
-use graphics::{run as run_visualizer, ActiveEffects};
-use hound::WavReader;
+use parser::parse_from_file;
+use graphics::run as run_visualizer;
 
+use notify::{Watcher, RecursiveMode, RecommendedWatcher, DebouncedEvent};
 
 fn main() {
 
-    // Load wav from first arg
-    let music_arg = match env::args().nth(1) {
-        Some(x) => x,
-        None => {println!("Usage: simon.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
+    // Load music file and script
+    let (music_arg, script_arg) = match (env::args().nth(1), env::args().nth(2)) {
+        (Some(x), Some(y)) => (x, y),
+        _ => {println!("Usage: audisuals.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
     };
+    
+    //let mut script_path = env::current_dir().unwrap();
+    //script_path.push(&script_arg);
 
-    // Load and parse file from second arg
-    let script_arg = match env::args().nth(2) {
-        Some(x) => x,
-        None => {println!("Usage: simon.exe music.wav script\nOr: cargo run -- music.wav script"); return;},
-    };
+    let (visuals,bg_mapper,mappers) = parse_from_file(&script_arg);
 
-    let (visuals,mappers) = parse_from_file(&script_arg);
-    let effects = ActiveEffects {effects: visuals};
-
-    let path = Path::new(&music_arg);
+    let song_path = Path::new(&music_arg);
 
     let music_start_time = SystemTime::now();
-    let song = match audio::make_song(&path, music_start_time) {
+    let song = match audio::make_song(&song_path, music_start_time) {
         Some(x) => x,
         None => {::std::process::exit(1);},
     };
 
-    let countdown = env::args().nth(2).and_then(|x| {
+    let countdown = env::args().nth(3).and_then(|x| {
         x.parse::<u64>().ok()
-    }).unwrap_or(7);
-
-    //let reader = WavReader::open(&arg).unwrap();
-    let sample_time = 0.25;
+    }).unwrap_or(0);
 
     // Create a transmitter and receiver for updates
     let (txa, rxa) : (Sender<AudioPacket>, Receiver<AudioPacket>) = channel();
     let (txg, rxg) : (Sender<GraphicsPacket>, Receiver<GraphicsPacket>) = channel();
 
-    // Countdown allowing you to press play
-    let countdown_dur = Duration::new(countdown, 0);
-    // Program has headstart of a quater of a second
-    let headstart = Duration::from_millis((1000.0 * sample_time) as u64);
+    let parser_txa = txa.clone();
 
-    let music_start_time = SystemTime::now() + countdown_dur + headstart;
+    // Program has headstart of a quarter of a second
+    let sample_time = 0.25;
 
-    // Start the graphics
-    thread::spawn(move || {
-        run_visualizer(music_start_time, rxg, effects);
-    });
+    // TODO: is this still necessary?
+    let music_start_time = SystemTime::now();
 
     // Start the mapper
     thread::spawn(move || {
-        run_map(rxa, txg, &mappers);
+        run_map(rxa, txg, bg_mapper, mappers);
     });
 
+    // set up watcher for file refresh
     thread::spawn(move || {
-        sleep(headstart);
-        for i in 0..countdown {
-            let ii = countdown - i;
-            println!("{}", ii); 
-            sleep(Duration::new(1, 0));
-        }
-        println!("Play!"); 
+        watch_script(script_arg.as_str(), parser_txa);
     });
 
-    // Doesn't sleep for headstart duration, but sleeps for countdown
-    sleep(countdown_dur);
+    // Start the graphics
+    thread::spawn(move || {
+        run_visualizer(music_start_time, rxg, visuals);
+    });
 
+    // start the audio analysis and playback
     run_audio(song, txa, sample_time, music_start_time);
+}
+
+// watches the script for changes.
+fn watch_script(script_path: &str, txa: Sender<AudioPacket>) {
+    let (txf, rxf) = channel();
+
+    let mut watcher: RecommendedWatcher = Watcher::new(txf, Duration::from_millis(1)).unwrap();
+
+    watcher.watch(&script_path, RecursiveMode::NonRecursive).unwrap();
+
+    loop {
+        match rxf.recv() {
+            Ok(event) => match event {
+                DebouncedEvent::Write(_) => {
+                    let (new_visuals, new_bg_mapper, new_mappers) = parse_from_file(&script_path);
+                    let update = AudioPacket::Refresh(DeviceStructs {
+                        bg_mapper: new_bg_mapper,
+                        mappers: new_mappers,
+                        visuals: new_visuals
+                    });
+                    txa.send(update).unwrap();
+                },
+                _ => {}
+            },
+            Err(e) => {
+                println!("Watch error: {:?}", e);
+                break;
+            }
+        }
+    }
 }

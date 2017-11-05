@@ -5,7 +5,7 @@ use std::thread::sleep;
 use std::sync::mpsc::Sender;
 use std::path::Path;
 use std::fs::File;
-use common::{AudioType, AudioPacket};
+use common::{AudioType, AudioPacket, AudioUpdate};
 use hound::{Sample, WavReader};
 
 pub mod mp3;
@@ -13,6 +13,7 @@ pub mod wav;
 
 pub trait Song : Iterator<Item=AudioData>{
     fn sample_max_value(&self) -> u32;
+    fn play(&self);
 }
 
 pub struct AudioData {
@@ -25,7 +26,7 @@ pub fn make_song(path : &Path, start_time : SystemTime) -> Option<Box<Song<Item=
         match ext.to_str().unwrap().to_lowercase().as_ref() {
             "wav" => {
                 let file = File::open(path).unwrap();
-                let wav = wav::WavSong::new(file).unwrap();
+                let wav = wav::WavSong::new(file, path).unwrap();
                 let x : Box<Song<Item=AudioData>> = Box::new(wav);
                 Some(x)
             }
@@ -36,7 +37,7 @@ pub fn make_song(path : &Path, start_time : SystemTime) -> Option<Box<Song<Item=
                 Some(x)
             }
             x => {
-                println!("Error: unknown file extension \"{}\"", x);
+                println!("Error: unsupported file extension \"{}\"", x);
                 None
             }
         }
@@ -47,7 +48,9 @@ pub fn run_audio(
     mut song : Box<Song<Item=AudioData>>,
     tx : Sender<AudioPacket>,
     sample_time : f64,
-    start_time : SystemTime) {
+    start_time : SystemTime
+    ) {
+    song.play();
 
     let sample_max = song.sample_max_value();
     let mut audio_proc = AudioProcessor::new(tx, sample_time, start_time, sample_max);
@@ -127,9 +130,9 @@ impl AudioProcessor {
                     let i = 5.0 * self.window.std_dev() / (self.sample_max as f64);
                     //let level = x as f64 / (sample_max as f64);
                     audio_map.insert(AudioType::Level, i);
-                    let update = AudioPacket {
+                    let update = AudioPacket::Update(AudioUpdate {
                         time : time,
-                        audio : audio_map};
+                        audio : audio_map});
                     try_send_update(&self.tx, update);
                 },
                 None => {

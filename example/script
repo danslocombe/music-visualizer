@@ -1,0 +1,12 @@
+bg: fill{Red=Level*0.5, Blue=cond(Level - 0.35, Level/2, Level/4)}
+
+circles{Size=Impulse * 0.9, R=0.8, G=0.6, B=0}
+dots{Size=(Level / 1.5) + 0.1, R=0, G=0.7, B=0.8, Count=cond(Level - 0.4, Level * 20, 30)}
+bar{Size=(Level * 3), R=1, G=1, B= 0, X=0, Trans=0.6}
+bar{Size=(Level * 5), R=1, G=0, B= 0, X=0.5, Trans=0.3}
+bar{Size=(Level * Level * 10), R=0.1, G=1.0, B= 0.6, X=0.8, Trans=0.5}
+circles{Size=0.25, R=Level-0.2, G=Level/3, B=Level/2 + (Impulse / 3), X=0.2, Y=0.3, width=3}
+circles{Size=0.25, R=Level-0.25, G=Level/2 + 0.1, B=Level/3 - 0.1, X=0.8, Y=0.3, width=3}
+circles{Size=0.25, R=Level, G=Level/3, B=Level/2 - 0.1, X=0.5, Y=0.85, width=3}
+circles{Size=0.2, X=sin(Level * 2), Y=cos(Level *2)}
+bar{Size=ceil(Level*30) / 10 - 0.2, R=0.3, G=0.8, B= 0.3, X=0.2}

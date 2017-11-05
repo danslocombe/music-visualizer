@@ -5,7 +5,7 @@ extern crate opengl_graphics;
 
 use std::sync::mpsc::Receiver;
 
-use common::{GArg, GraphicsPacket};
+use common::{GArg, GraphicsPacket, GraphicsUpdate};
 use self::glutin_window::GlutinWindow as Window;
 use self::opengl_graphics::{Colored, GlGraphics, OpenGL, Textured};
 use self::piston::event_loop::*;
@@ -13,22 +13,11 @@ use self::piston::window::WindowSettings;
 use self::piston::input::*;
 use std::time::{Duration, SystemTime};
 
+#[macro_use]
+mod common;
 pub mod geom_visuals;
+pub mod backgrounds;
 
-use self::geom_visuals::*;
-
-type Color = [f32; 4];
-
-const WHITE: Color = [1.0, 1.0, 1.0, 1.0];
-const RED: Color = [1.0, 0.0, 0.0, 1.0];
-const BLACK: Color = [0.0, 0.0, 0.0, 1.0];
-
-
-fn color_from_val(x : f64) -> Color {
-    let y = x as f32;
-    // Set alpha to 1
-    [y, y, y, 1.0]
-}
 
 // trait for visualising a single effect
 pub trait Visualization: Send {
@@ -36,35 +25,49 @@ pub trait Visualization: Send {
     fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs);
 }
 
+// trait for backgrounds
+pub trait Background: Send {
+    fn update(&mut self, args: &[(GArg, f64)]);
+    fn render(&self, gl_graphics : &mut GlGraphics, args: &RenderArgs);
+}
+
 pub struct ActiveEffects {
+    pub bg: Box<Background>,
     pub effects: Vec<Box<Visualization>>,
-    // TODO: background
 }
 
 impl ActiveEffects {
-    fn update_all(&mut self, mut update_buffer: Vec<GraphicsPacket>) {
-        let (effect_args, packet_time) = match update_buffer.pop() {
-            Some(p) => (p.effect_args, p.time),
-            None => (vec![Vec::new();self.effects.len()], Duration::new(0,0))
-        };
+    fn update_all(&mut self, update: GraphicsUpdate) {
+        let (bg_args, effect_args, packet_time) = (update.bg_args, update.effect_args, update.time);
+
+        self.bg.update(&bg_args);
     
         for (i, e) in self.effects.iter_mut().enumerate() {
             e.update(&effect_args[i], packet_time);
         }
     }
 
-    fn render_all(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
+    fn render_all(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs, window: &mut Window) {
         use graphics::graphics::clear;
 
         // draw background
-        gl_graphics.draw(args.viewport(), |_, gl| {
-            clear(BLACK, gl);
-        });
+        self.bg.render(gl_graphics, args);
 
         // draw effects in order
         for e in self.effects.iter() {
             e.render(fps, gl_graphics, args);
         }
+
+        /*let texture = Texture::from_image(
+            &mut window.factory,
+            & [image]
+            &TextureSettings::new()
+        ).unwrap();;
+
+        window.draw_2d(&e, |c, gl| {
+            clear(BLACK, gl);
+            image(&texture, c.transform, gl);
+        });*/
     }
 }
 
@@ -72,7 +75,7 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>, effects: Acti
     // Try a different version if this doesn't work
     let opengl = OpenGL::V3_3;
 
-    let mut window : Window = WindowSettings::new("Simon", [800, 600])
+    let mut window : Window = WindowSettings::new("Audisuals", [800, 600])
         .opengl(opengl)
         .vsync(true)
         .exit_on_esc(true)
@@ -96,16 +99,25 @@ pub fn run(start_time : SystemTime, rx : Receiver<GraphicsPacket>, effects: Acti
                 // Calculate fps
                 let dt = prev_time.elapsed().unwrap();
                 prev_time = SystemTime::now();
-                let fps = 1000_000_000.0 / (dt.subsec_nanos() as f64);
+                let fps = 1000_000_000.0 / (dt.subsec_nanos() as f64); // TODO: is this necessary?
 
-                ae.render_all(fps, &mut gl_graphics, &r);
+                ae.render_all(fps, &mut gl_graphics, &r, &mut window);
             }
             Input::Update(_) => {
 
                 // Get all the pending updates from the receiver and buffer into list
-                let update_buffer = rx.try_iter().collect::<Vec<GraphicsPacket>>();
+                let mut update_buffer = rx.try_iter().collect::<Vec<GraphicsPacket>>();
 
-                ae.update_all(update_buffer);
+                match update_buffer.pop() {
+                    Some(GraphicsPacket::Update(update)) => ae.update_all(update),
+                    Some(GraphicsPacket::Refresh(effects)) => ae = effects,
+                    None => {
+                        let len = ae.effects.len();
+                        ae.update_all(GraphicsUpdate::new_empty(len))
+                    },
+                }
+
+                //ae.update_all(update_buffer);
             }
             Input::Press(i) => {
                 // Ignore for now

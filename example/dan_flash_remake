@@ -1,0 +1,14 @@
+bg: fill{R=cond(Impulse - 0.1, 1.0, 0.0),
+	 G=cond(Impulse - 0.1, 1.0, 0.0),
+	 B=cond(Impulse - 0.1, 1.0, 0.0)}
+
+circles{Size=Impulse * 2,
+	R=cond(Impulse - 0.1, 0.0, 1.0),
+	G=cond(Impulse - 0.1, 0.0, 1.0),
+	B=cond(Impulse - 0.1, 0.0, 1.0)}
+
+circles{Size=(Level - 0.45) + 0.1,
+	R=0,
+	G=0.6,
+	B=0.7,
+	Trans=0.5}

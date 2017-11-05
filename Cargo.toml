@@ -1,7 +1,7 @@
 [package]
-name = "simon"
-version = "0.1.0"
-authors = ["t-dasloc"]
+name = "audisuals"
+version = "0.1.3"
+authors = ["t-dasloc", "coopersimon"]
 
 [dependencies]
 simplemad = "0.8.1"
@@ -13,3 +13,5 @@ piston2d-opengl_graphics = { git = "https://github.com/danslocombe/opengl_graphi
 rand = "0.3"
 cgmath = "0.12"
 nom = "^3.2"
+notify = "4.0.0"
+rodio = "0.5.2"

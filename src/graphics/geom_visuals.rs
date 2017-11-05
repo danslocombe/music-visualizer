@@ -1,9 +1,10 @@
 use std::time::{Duration, SystemTime};
 use std::collections::HashMap;
-use graphics::opengl_graphics::{Colored, GlGraphics, OpenGL, Textured};
+use graphics::opengl_graphics::GlGraphics;
 use graphics::piston::input::RenderArgs;
-use graphics::{Color, Visualization};
 use common::GArg;
+use graphics::Visualization;
+use graphics::common::*;
 
 const TWO_PI : f64 = 6.282;
 
@@ -49,31 +50,6 @@ fn line_points (gl : &mut GlGraphics,
     });
 }
 
-macro_rules! make_map {
-    ( $($k:expr , $v:expr);* ) => {
-        {
-            let mut map = HashMap::new();
-            $(
-                map.insert($k, $v);
-            )*
-            map
-        }
-    };
-}
-
-#[inline]
-fn cons_color(vars: &HashMap<GArg, f64>) -> Color {
-    let r = vars.get(&GArg::R).unwrap().clone();
-    let g = vars.get(&GArg::G).unwrap().clone();
-    let b = vars.get(&GArg::B).unwrap().clone();
-    [r as f32, g as f32, b as f32, 1.0]
-}
-
-#[inline]
-fn arg(vars: &HashMap<GArg, f64>, arg: GArg) -> f64 {
-    vars.get(&arg).unwrap().clone()
-}
-
 pub struct CircleVisuals {
     start_time : SystemTime,
     last_trigger : Duration,
@@ -84,7 +60,9 @@ pub struct CircleVisuals {
 
 impl CircleVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Scale,1.0];
+        let vars = make_map![GArg::Size,0.0;GArg::Width,1.0;
+                             GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
+                             GArg::X,0.5;GArg::Y,0.5];
         CircleVisuals {
             start_time : SystemTime::now(),
             since_last : 0,
@@ -96,8 +74,8 @@ impl CircleVisuals {
 
     pub fn newv(vars: &[(GArg, f64)]) -> Self {
         let mut v = Self::new();
-        for &(ref a,ref f) in vars {
-            v.vars.insert(a.clone(),f.clone());
+        for (a,f) in vars.iter().cloned() {
+            v.vars.insert(a,f);
         };
         v
     }
@@ -113,8 +91,12 @@ impl Visualization for CircleVisuals {
             let prec : i32 = 32;
             let prec_d = prec as f64;
 
+            // Circle centre
+            let x_cent = (arg(&self.vars,GArg::X) * 2.0) - 1.0;
+            let y_cent = (arg(&self.vars,GArg::Y) * 2.0) - 1.0;
+
             // Circle radius
-            let r_mult = arg(&self.vars,GArg::Size).abs() * arg(&self.vars,GArg::Scale).abs();
+            let r_mult = arg(&self.vars,GArg::Size).abs();
 
             let r = if self.on {
                 r_mult
@@ -129,14 +111,14 @@ impl Visualization for CircleVisuals {
                 let i_d = i as f64;
                 let i1_d = (i + 1) as f64;
                 let p1 = Point{
-                    x : r * (TWO_PI * i_d / prec_d).cos(),
-                    y : r * (TWO_PI * i_d / prec_d).sin(),
+                    x : (r * (TWO_PI * i_d / prec_d).cos()) + x_cent,
+                    y : (r * (TWO_PI * i_d / prec_d).sin()) + y_cent,
                 };
                 let p2 = Point{
-                    x : r * (TWO_PI * i1_d / prec_d).cos(),
-                    y : r * (TWO_PI * i1_d / prec_d).sin(),
+                    x : (r * (TWO_PI * i1_d / prec_d).cos()) + x_cent,
+                    y : (r * (TWO_PI * i1_d / prec_d).sin()) + y_cent,
                 };
-                line_points(gl, args, color, 1.0, &p1, &p2);
+                line_points(gl, args, color, arg(&self.vars,GArg::Width), &p1, &p2);
             }
         });
     }
@@ -146,12 +128,12 @@ impl Visualization for CircleVisuals {
 
         let last_size = arg(&self.vars,GArg::Size);
 
-        for &(ref a,ref v) in args.iter() {
-            self.vars.insert(a.clone(),v.clone());
+        for (a, v) in args.iter().cloned() {
+            self.vars.insert(a,v);
         }
 
-        if (arg(&self.vars,GArg::Size) > 0.0) {
-            self.since_last = 0;
+        if arg(&self.vars,GArg::Size) > 0.0 {
+            self.since_last = 1;
             self.last_trigger = args_time;
         }
         else {
@@ -181,7 +163,9 @@ pub struct DotsVisuals {
 
 impl DotsVisuals {
     pub fn new() -> Self {
-        let vars = make_map![GArg::Size,0.0;GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Scale,1.0;GArg::Count,32.0];
+        let vars = make_map![GArg::Size,0.0;GArg::Count,32.0;
+                             GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
+                             GArg::X,0.5;GArg::Y,0.5];
         DotsVisuals {
             since_last : 0,
             size_prev : 0.0,
@@ -193,8 +177,8 @@ impl DotsVisuals {
 
     pub fn newv(vars: &[(GArg, f64)]) -> Self {
         let mut v = Self::new();
-        for &(ref a,ref f) in vars.iter() {
-            v.vars.insert(a.clone(),f.clone());
+        for (a,f) in vars.iter().cloned() {
+            v.vars.insert(a,f);
         };
         v
     }
@@ -206,24 +190,27 @@ impl Visualization for DotsVisuals {
         use graphics::*;
 
         gl_graphics.draw(args.viewport(), |_, gl| {
+            // centre of dots
+            let x_cent = (arg(&self.vars,GArg::X) * 2.0) - 1.0;
+            let y_cent = (arg(&self.vars,GArg::Y) * 2.0) - 1.0;
 
             let color = cons_color(&self.vars);
+
             // Draw a circle of radius r
             let dots = arg(&self.vars,GArg::Count) as u32;
             for i in 0..dots {
-                let r0 = self.size_prev * arg(&self.vars,GArg::Scale);
+                let r0 = self.size_prev;
                 let theta0 = self.angle_prev + (i as f64) * TWO_PI / arg(&self.vars,GArg::Count);
-                let r1 = arg(&self.vars,GArg::Size) * arg(&self.vars,GArg::Scale);
+                let r1 = arg(&self.vars,GArg::Size);
                 let theta = self.angle + (i as f64) * TWO_PI / arg(&self.vars,GArg::Count);
-
             
                 let p0 = Point{
-                    x : r0 * (theta0).cos(),
-                    y : r0 * (theta0).sin(),
+                    x : (r0 * (theta0).cos()) + x_cent,
+                    y : (r0 * (theta0).sin()) + y_cent,
                 };
                 let p1 = Point{
-                    x : r1 * theta.cos(),
-                    y : r1 * theta.sin(),
+                    x : (r1 * theta.cos()) + x_cent,
+                    y : (r1 * theta.sin()) + y_cent,
                 };
 
                 line_points(gl, args, color, 1.0, &p0, &p1);
@@ -236,14 +223,167 @@ impl Visualization for DotsVisuals {
 
         self.size_prev = arg(&self.vars,GArg::Size);
 
-        for &(ref a,ref v) in args.iter() {
-            self.vars.insert(a.clone(),v.clone());
+        for (a,v) in args.iter().cloned() {
+            self.vars.insert(a,v);
         }
 
         self.angle_prev = self.angle;
         self.angle += arg(&self.vars,GArg::Size) * 0.04;
-        if (self.angle > TWO_PI) {
+        if self.angle > TWO_PI {
             self.angle -= TWO_PI;
         }
+    }
+}
+
+//struct 
+pub struct BarVisuals {
+    since_last : usize,
+    size_prev : f64,
+    vars : HashMap<GArg, f64>
+}
+
+impl BarVisuals {
+    pub fn new() -> Self {
+        let vars = make_map![GArg::Size,0.0;GArg::Width,1.0;
+                             GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
+                             GArg::X,0.0;GArg::Y,1.0];
+        BarVisuals {
+            since_last: 0,
+            size_prev: 0.0,
+            vars: vars
+        }
+    }
+}
+
+impl Visualization for BarVisuals {
+    fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
+        use graphics::*;
+        use graphics::graphics::Transformed;
+
+        gl_graphics.draw(args.viewport(), |c, gl| {
+            let color = cons_color(&self.vars);
+
+            let rect_width = ((args.width / 10 ) as f64) * arg(&self.vars,GArg::Width);
+            let rect_height = arg(&self.vars,GArg::Size)/* * ((args.height / 2) as f64)*/;
+
+            let x = arg(&self.vars,GArg::X) * (args.width as f64);
+            let y = arg(&self.vars,GArg::Y) * (args.height as f64);
+
+            let transform = c.transform.trans(x, y)
+                                       .flip_v()
+                                       .scale(1.0, rect_height);
+
+            let shape = graphics::rectangle::square(0.0, 0.0, rect_width);
+
+            graphics::rectangle(color, shape, transform, gl);
+        });
+    }
+
+    fn update(&mut self, args: &[(GArg, f64)], args_time: Duration) {
+        self.since_last = self.since_last + 1;
+
+        self.size_prev = arg(&self.vars,GArg::Size);
+        
+        for (a,v) in args.iter().cloned() {
+            self.vars.insert(a,v);
+        }
+    }
+}
+
+pub struct SpikyVisuals {
+    start_time : SystemTime,
+    last_trigger : Duration,
+    since_last : u32,
+    on : bool,
+    vars : HashMap<GArg, f64>
+}
+
+impl SpikyVisuals {
+    pub fn new() -> Self {
+        let vars = make_map![GArg::Size,0.0;
+                             GArg::R,1.0;GArg::G,1.0;GArg::B,1.0;GArg::Trans,1.0;
+                             GArg::X,0.5;GArg::Y,0.5];
+        SpikyVisuals {
+            start_time : SystemTime::now(),
+            since_last : 0,
+            last_trigger : Duration::new(0, 0),
+            on : false,
+            vars : vars
+        }
+    }
+}
+
+impl Visualization for SpikyVisuals {
+
+    fn render(&self, fps: f64, gl_graphics : &mut GlGraphics, args: &RenderArgs) {
+        use graphics::*;
+
+        gl_graphics.draw(args.viewport(), |_, gl| {
+            // Circle precision
+            let prec : i32 = 32;
+            let prec_d = prec as f64;
+
+            // Circle centre
+            let x_cent = (arg(&self.vars,GArg::X) * 2.0) - 1.0;
+            let y_cent = (arg(&self.vars,GArg::Y) * 2.0) - 1.0;
+
+            // Circle radius
+            let r_mult = arg(&self.vars,GArg::Size).abs();
+
+            let r = if self.on {
+                r_mult
+            }
+            else {
+                r_mult / (self.since_last as f64)
+            } * 2.0;
+
+            let color = cons_color(&self.vars);
+            // Draw a circle of radius r
+            for i in 0..prec {
+                let i_d = i as f64;
+                let i1_d = (i + 1) as f64;
+                let variance : f64 = if i % 2 == 0 {0.0} else {
+                    0.1
+                };
+                let p1 = Point{
+                    x : (r * (TWO_PI * i_d / prec_d).cos()) + x_cent + variance,
+                    y : (r * (TWO_PI * i_d / prec_d).sin()) + y_cent + variance,
+                };
+                let p2 = Point{
+                    x : (r * (TWO_PI * i1_d / prec_d).cos()) + x_cent,
+                    y : (r * (TWO_PI * i1_d / prec_d).sin()) + y_cent,
+                };
+                line_points(gl, args, color, 1.0, &p1, &p2);
+            }
+        });
+    }
+
+    fn update(&mut self, args: &[(GArg, f64)], args_time: Duration) {
+        self.since_last = self.since_last + 1;
+
+        let last_size = arg(&self.vars,GArg::Size);
+
+        for (a, v) in args.iter().cloned() {
+            self.vars.insert(a,v);
+        }
+
+        if arg(&self.vars,GArg::Size) > 0.0 {
+            self.since_last = 1;
+            self.last_trigger = args_time;
+        }
+        else {
+            self.vars.insert(GArg::Size,last_size);
+        }
+
+        // Only update if song is playing
+        let _ = self.start_time.elapsed().map(|current_time| {
+
+            // 50 milliseconds
+            let epilepsy_preventation_duration = Duration::new(0, 50_000_000);
+
+            let since_trigger = diff_durs(&current_time, &self.last_trigger);
+
+            self.on = since_trigger < epilepsy_preventation_duration;
+        });
     }
 }

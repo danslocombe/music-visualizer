@@ -20,6 +20,10 @@ impl<T : Read> Song for Mp3Song<T> {
         U32MAX / 8
     }
     //sample_max_value : u32 = U32MAX / 8;
+
+    fn play(&self) {
+        // TODO
+    }
 }
 
 impl<T : Read> Mp3Song<T> {
